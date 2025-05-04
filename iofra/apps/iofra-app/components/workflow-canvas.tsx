@@ -12,7 +12,6 @@ import ReactFlow, {
   type OnConnect,
   Background,
   BackgroundVariant,
-  Panel,
   type NodeTypes,
   type Node,
   Position,
@@ -21,19 +20,15 @@ import "reactflow/dist/style.css"
 
 import { ComponentsSidebar } from "@/components/components-sidebar"
 import { PropertiesPanel } from "@/components/properties-panel"
-import { SensorNode } from "@/components/nodes/sensor-node"
 import { TriggerNode } from "@/components/nodes/trigger-node"
 import { ResponseNode } from "@/components/nodes/response-node"
 import { EncryptNode } from "@/components/nodes/encrypt-node"
 import { MtlsNode } from "@/components/nodes/mtls-node"
 import { OtaNode } from "@/components/nodes/ota-node"
 import { DeviceNode } from "@/components/nodes/device-node"
-import { ActuatorNode } from "@/components/nodes/actuator-node"
 
 const nodeTypes: NodeTypes = {
   device: DeviceNode,
-  sensor: SensorNode,
-  actuator: ActuatorNode,
   trigger: TriggerNode,
   response: ResponseNode,
   encrypt: EncryptNode,
@@ -98,11 +93,29 @@ export function WorkflowCanvas() {
   const getDefaultProperties = (type: string) => {
     switch (type) {
       case "device":
-        return { status: "online", ipAddress: "192.168.1.1", components: [] }
-      case "sensor":
-        return { sensorType: "temperature", interval: 5, unit: "celsius" }
-      case "actuator":
-        return { actuatorType: "switch", state: "off", protocol: "mqtt" }
+        return { 
+          status: "online", 
+          ipAddress: "192.168.1.1", 
+          location: "Office",
+          sensors: [
+            { 
+              id: `sensor-${Date.now()}`, 
+              name: "Temperature Sensor", 
+              sensorType: "temperature", 
+              interval: 5, 
+              unit: "celsius" 
+            }
+          ],
+          actuators: [
+            { 
+              id: `actuator-${Date.now()}`, 
+              name: "Smart Switch", 
+              actuatorType: "switch", 
+              state: "off", 
+              protocol: "mqtt" 
+            }
+          ]
+        }
       case "trigger":
         return { condition: ">", threshold: 30, topic: "iot/alerts" }
       case "response":
@@ -176,11 +189,11 @@ export function WorkflowCanvas() {
         >
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="#D9E4DD" />
           <Controls className="bg-white/80 rounded-lg border border-[#D9E4DD]" />
-          <Panel position={Position.Top} className="flex justify-center w-full">
+          <div className="absolute top-0 left-0 right-0 flex justify-center w-full z-10 p-2">
             <div className="bg-white/80 px-4 py-2 rounded-lg border border-[#D9E4DD] shadow-sm">
               <h1 className="text-xl font-medium text-[#5C6E91]">Iofra Workflow Designer</h1>
             </div>
-          </Panel>
+          </div>
         </ReactFlow>
       </div>
       <PropertiesPanel selectedNode={selectedNode} updateNodeProperties={updateNodeProperties} />

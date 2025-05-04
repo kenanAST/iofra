@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
+import { Thermometer, ToggleRight } from "lucide-react"
 
 interface PropertiesPanelProps {
   selectedNode: Node | null
@@ -89,6 +90,211 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties }: Properti
                   value={properties.location || ""}
                   onChange={(e) => handlePropertyChange("location", e.target.value)}
                 />
+              </div>
+
+              <Separator className="my-4" />
+              
+              <div>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium text-[#5C6E91]">Sensors</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const sensors = [...(properties.sensors || [])];
+                      sensors.push({ 
+                        id: `sensor-${Date.now()}`,
+                        name: `Sensor ${sensors.length + 1}`,
+                        sensorType: "temperature", 
+                        interval: 5, 
+                        unit: "celsius" 
+                      });
+                      handlePropertyChange("sensors", sensors);
+                    }}
+                  >
+                    Add Sensor
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 mt-2">
+                  {(properties.sensors || []).map((sensor: any, index: number) => (
+                    <div key={sensor.id} className="bg-white rounded p-2 border border-[#D9E4DD]">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
+                            <Thermometer className="h-2 w-2 text-white" />
+                          </div>
+                          <Input
+                            className="h-6 text-xs ml-1 w-32"
+                            value={sensor.name}
+                            onChange={(e) => {
+                              const sensors = [...(properties.sensors || [])];
+                              sensors[index].name = e.target.value;
+                              handlePropertyChange("sensors", sensors);
+                            }}
+                          />
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            const sensors = [...(properties.sensors || [])];
+                            sensors.splice(index, 1);
+                            handlePropertyChange("sensors", sensors);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor={`sensor-${index}-type`} className="text-xs">Type</Label>
+                          <Select
+                            value={sensor.sensorType}
+                            onValueChange={(value) => {
+                              const sensors = [...(properties.sensors || [])];
+                              sensors[index].sensorType = value;
+                              handlePropertyChange("sensors", sensors);
+                            }}
+                          >
+                            <SelectTrigger id={`sensor-${index}-type`} className="h-6 text-xs">
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="temperature">Temperature</SelectItem>
+                              <SelectItem value="humidity">Humidity</SelectItem>
+                              <SelectItem value="motion">Motion</SelectItem>
+                              <SelectItem value="light">Light</SelectItem>
+                              <SelectItem value="pressure">Pressure</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor={`sensor-${index}-interval`} className="text-xs">Interval (s)</Label>
+                          <Input
+                            id={`sensor-${index}-interval`}
+                            className="h-6 text-xs"
+                            type="number"
+                            value={sensor.interval}
+                            onChange={(e) => {
+                              const sensors = [...(properties.sensors || [])];
+                              sensors[index].interval = Number.parseInt(e.target.value);
+                              handlePropertyChange("sensors", sensors);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium text-[#5C6E91]">Actuators</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const actuators = [...(properties.actuators || [])];
+                      actuators.push({ 
+                        id: `actuator-${Date.now()}`,
+                        name: `Actuator ${actuators.length + 1}`,
+                        actuatorType: "switch", 
+                        state: "off", 
+                        protocol: "mqtt" 
+                      });
+                      handlePropertyChange("actuators", actuators);
+                    }}
+                  >
+                    Add Actuator
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 mt-2">
+                  {(properties.actuators || []).map((actuator: any, index: number) => (
+                    <div key={actuator.id} className="bg-white rounded p-2 border border-[#D9E4DD]">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 rounded-full bg-[#FFA6A6] flex items-center justify-center mr-1">
+                            <ToggleRight className="h-2 w-2 text-white" />
+                          </div>
+                          <Input
+                            className="h-6 text-xs ml-1 w-32"
+                            value={actuator.name}
+                            onChange={(e) => {
+                              const actuators = [...(properties.actuators || [])];
+                              actuators[index].name = e.target.value;
+                              handlePropertyChange("actuators", actuators);
+                            }}
+                          />
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            const actuators = [...(properties.actuators || [])];
+                            actuators.splice(index, 1);
+                            handlePropertyChange("actuators", actuators);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label htmlFor={`actuator-${index}-type`} className="text-xs">Type</Label>
+                          <Select
+                            value={actuator.actuatorType}
+                            onValueChange={(value) => {
+                              const actuators = [...(properties.actuators || [])];
+                              actuators[index].actuatorType = value;
+                              handlePropertyChange("actuators", actuators);
+                            }}
+                          >
+                            <SelectTrigger id={`actuator-${index}-type`} className="h-6 text-xs">
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="switch">Switch</SelectItem>
+                              <SelectItem value="relay">Relay</SelectItem>
+                              <SelectItem value="motor">Motor</SelectItem>
+                              <SelectItem value="servo">Servo</SelectItem>
+                              <SelectItem value="valve">Valve</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor={`actuator-${index}-state`} className="text-xs">State</Label>
+                          <Select
+                            value={actuator.state}
+                            onValueChange={(value) => {
+                              const actuators = [...(properties.actuators || [])];
+                              actuators[index].state = value;
+                              handlePropertyChange("actuators", actuators);
+                            }}
+                          >
+                            <SelectTrigger id={`actuator-${index}-state`} className="h-6 text-xs">
+                              <SelectValue placeholder="State" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="on">On</SelectItem>
+                              <SelectItem value="off">Off</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </>
@@ -426,8 +632,8 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties }: Properti
             className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{
               backgroundColor:
-                selectedNode.type === "sensor"
-                  ? "#A6D1E6"
+                selectedNode.type === "device"
+                  ? "#C3E8BD"
                   : selectedNode.type === "trigger"
                     ? "#FECDA6"
                     : selectedNode.type === "response"

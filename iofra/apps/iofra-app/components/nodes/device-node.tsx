@@ -1,10 +1,13 @@
 import { memo } from "react"
 import { Handle, Position, type NodeProps } from "reactflow"
-import { HardDrive } from "lucide-react"
+import { HardDrive, Thermometer, ToggleRight } from "lucide-react"
 
 export const DeviceNode = memo(({ data, isConnectable }: NodeProps) => {
+  const sensorCount = data.properties?.sensors?.length || 0
+  const actuatorCount = data.properties?.actuators?.length || 0
+
   return (
-    <div className="relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 w-48">
+    <div className="relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 w-64">
       <Handle
         type="source"
         position={Position.Right}
@@ -24,24 +27,46 @@ export const DeviceNode = memo(({ data, isConnectable }: NodeProps) => {
         </div>
         <div>
           <h3 className="text-sm font-medium text-[#5C6E91]">{data.label}</h3>
-          <p className="text-xs text-[#7A8CA3]">Device</p>
+          <p className="text-xs text-[#7A8CA3]">IoT Device</p>
         </div>
       </div>
 
-      <div className="mt-2 text-xs text-[#7A8CA3] bg-[#F8F6F0] rounded p-1">
+      <div className="mt-2 text-xs text-[#7A8CA3] bg-[#F8F6F0] rounded p-1 space-y-1">
         <div className="flex justify-between">
           <span>Status:</span>
-          <span>{data.properties?.status || "online"}</span>
+          <span className={data.properties?.status === "online" ? "text-green-500" : "text-red-500"}>
+            {data.properties?.status || "online"}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>IP Address:</span>
           <span>{data.properties?.ipAddress || "192.168.1.1"}</span>
         </div>
-        <div className="flex justify-between">
-          <span>Components:</span>
-          <span>{data.properties?.components?.length || 0}</span>
-        </div>
       </div>
+
+      {(sensorCount > 0 || actuatorCount > 0) && (
+        <div className="mt-2 text-xs border-t border-[#D9E4DD] pt-2">
+          <div className="font-medium text-[#5C6E91] mb-1">Components:</div>
+          
+          {data.properties?.sensors?.map((sensor: any, index: number) => (
+            <div key={`sensor-${index}`} className="flex items-center mb-1">
+              <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
+                <Thermometer className="h-2 w-2 text-white" />
+              </div>
+              <span className="text-[#7A8CA3]">{sensor.name} ({sensor.sensorType})</span>
+            </div>
+          ))}
+          
+          {data.properties?.actuators?.map((actuator: any, index: number) => (
+            <div key={`actuator-${index}`} className="flex items-center mb-1">
+              <div className="w-4 h-4 rounded-full bg-[#FFA6A6] flex items-center justify-center mr-1">
+                <ToggleRight className="h-2 w-2 text-white" />
+              </div>
+              <span className="text-[#7A8CA3]">{actuator.name} ({actuator.actuatorType})</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 })

@@ -34,7 +34,7 @@ export function ComponentsSidebar() {
             <DraggableComponent
               type="device"
               name="Device"
-              description="IoT device that can contain sensors and actuators"
+              description="IoT device with sensors and actuators"
               icon={<HardDrive className="h-5 w-5" />}
               onDragStart={onDragStart}
               color="#C3E8BD"
@@ -43,24 +43,8 @@ export function ComponentsSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Input Components</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Processing Components</SidebarGroupLabel>
           <SidebarGroupContent className="space-y-2">
-            <DraggableComponent
-              type="sensor"
-              name="Sensor"
-              description="Collects data from IoT devices"
-              icon={<Thermometer className="h-5 w-5" />}
-              onDragStart={onDragStart}
-              color="#A6D1E6"
-            />
-            <DraggableComponent
-              type="actuator"
-              name="Actuator"
-              description="Controls physical mechanisms or systems"
-              icon={<ToggleRight className="h-5 w-5" />}
-              onDragStart={onDragStart}
-              color="#FFA6A6"
-            />
             <DraggableComponent
               type="trigger"
               name="Trigger"
@@ -69,12 +53,6 @@ export function ComponentsSidebar() {
               onDragStart={onDragStart}
               color="#FECDA6"
             />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Processing Components</SidebarGroupLabel>
-          <SidebarGroupContent className="space-y-2">
             <DraggableComponent
               type="encrypt"
               name="Encrypt"
