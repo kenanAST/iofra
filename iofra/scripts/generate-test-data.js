@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 // MongoDB connection URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/iot-platform';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27018/iot-platform';
 
 // Device types and statuses
 const deviceTypes = ['sensor', 'actuator', 'gateway'];

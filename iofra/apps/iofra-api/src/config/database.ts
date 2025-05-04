@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
 
 // MongoDB connection URI
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/iot-platform';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27018/iot-platform';
 
 // Connect to MongoDB
 export const connectToDatabase = async (): Promise<void> => {
