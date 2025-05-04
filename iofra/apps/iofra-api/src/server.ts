@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { apiRoutes } from './routes';
 import { errorHandler } from './middlewares/errorHandler';
+import { connectToDatabase } from './config/database';
+import { startMqttServer } from './services/mqttService';
 
 // Load environment variables
 dotenv.config();
@@ -33,9 +35,32 @@ app.get('/health', (req, res) => {
 
 // Start server
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, () => {
-    logger.info(`Server running on port ${port}`);
+  // Connect to database
+  connectToDatabase().then(() => {
+    // Start HTTP server
+    app.listen(port, () => {
+      logger.info(`HTTP server running on port ${port}`);
+      
+      // Start MQTT server after HTTP server is running
+      startMqttServer();
+    });
+  }).catch(err => {
+    logger.error(`Failed to start server: ${err}`);
+    process.exit(1);
   });
 }
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  // Additional cleanup code here (close database, MQTT server, etc.)
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  // Additional cleanup code here (close database, MQTT server, etc.)
+  process.exit(0);
+});
 
 export default app; 
