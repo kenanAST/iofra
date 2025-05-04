@@ -327,10 +327,14 @@ export function WorkflowCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onInit={setReactFlowInstance}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionLineComponent={CustomConnectionLine}
+          defaultEdgeOptions={{ type: 'custom' }}
           fitView
           attributionPosition="bottom-left"
         >
