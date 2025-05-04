@@ -20,7 +20,7 @@ openssl genrsa -out ca.key 2048
 # Generate CA certificate
 echo "Generating CA certificate..."
 openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 -out ca.crt \
-  -subj "/C=US/ST=State/L=City/O=Organization/OU=IoT/CN=IoT-Root-CA"
+  -subj "//C=US\ST=State\L=City\O=Organization\OU=IoT\CN=IoT-Root-CA"
 
 # Generate server private key
 echo "Generating server key..."
@@ -29,7 +29,7 @@ openssl genrsa -out server.key 2048
 # Generate server CSR
 echo "Generating server CSR..."
 openssl req -new -key server.key -out server.csr \
-  -subj "/C=US/ST=State/L=City/O=Organization/OU=IoT/CN=iot-server"
+  -subj "//C=US\ST=State\L=City\O=Organization\OU=IoT\CN=iot-server"
 
 # Create server extensions file
 cat > server_ext.cnf << EOF
@@ -63,7 +63,7 @@ openssl genrsa -out device_001.key 2048
 
 # Generate device CSR
 openssl req -new -key device_001.key -out device_001.csr \
-  -subj "/C=US/ST=State/L=City/O=Organization/OU=IoT/CN=esp32_device_001"
+  -subj "//C=US\ST=State\L=City\O=Organization\OU=IoT\CN=esp32_device_001"
 
 # Sign device certificate with CA
 openssl x509 -req -in device_001.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
