@@ -22,6 +22,7 @@ export function useDevices() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [noDevicesAvailable, setNoDevicesAvailable] = useState<boolean>(false);
 
   // Convert API device to ReactFlow node format
   const mapDeviceToNode = useCallback((device: Device, index: number): DeviceNode => {
@@ -46,12 +47,23 @@ export function useDevices() {
   const loadDevices = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNoDevicesAvailable(false);
     
     try {
       const devicesData = await fetchDevices();
       setDevices(devicesData);
+      
+      // Set noDevicesAvailable flag if the API returns an empty array
+      if (devicesData.length === 0) {
+        setNoDevicesAvailable(true);
+      }
     } catch (err) {
-      setError('Failed to load devices');
+      // For connection errors, we'll show a different message
+      if (err instanceof Error && err.message.includes('Failed to fetch')) {
+        setError('Could not connect to the orchestration platform');
+      } else {
+        setError('Failed to load devices');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -71,6 +83,8 @@ export function useDevices() {
 
   // Handle new device connections
   const handleDeviceConnected = useCallback((device: Device) => {
+    setNoDevicesAvailable(false); // Reset the no devices flag when a device connects
+    
     setDevices(prevDevices => {
       // Check if device already exists
       const exists = prevDevices.some(d => d.deviceId === device.deviceId);
@@ -89,13 +103,21 @@ export function useDevices() {
 
   // Handle device disconnections
   const handleDeviceDisconnected = useCallback((data: { deviceId: string }) => {
-    setDevices(prevDevices => 
-      prevDevices.map(device => 
+    setDevices(prevDevices => {
+      const updatedDevices = prevDevices.map(device => 
         device.deviceId === data.deviceId 
           ? { ...device, status: 'offline' } 
           : device
-      )
-    );
+      );
+      
+      // Check if all devices are now offline and update noDevicesAvailable accordingly
+      const allOffline = updatedDevices.every(d => d.status === 'offline');
+      if (allOffline && updatedDevices.length > 0) {
+        setNoDevicesAvailable(true);
+      }
+      
+      return updatedDevices;
+    });
   }, []);
 
   // Initialize WebSocket connection and event listeners
@@ -127,6 +149,7 @@ export function useDevices() {
     deviceNodes,
     loading,
     error,
+    noDevicesAvailable,
     refreshDevices: loadDevices,
   };
 } 

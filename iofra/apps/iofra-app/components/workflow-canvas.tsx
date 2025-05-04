@@ -51,7 +51,7 @@ export function WorkflowCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-  const { deviceNodes, loading, error } = useDevices()
+  const { deviceNodes, loading, error, noDevicesAvailable, refreshDevices } = useDevices()
   
   // Set initial nodes when device data is loaded
   useEffect(() => {
@@ -289,8 +289,37 @@ export function WorkflowCanvas() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-red-500">
-          <p>Failed to load devices</p>
-          <p className="text-sm">{error}</p>
+          <p className="text-lg font-medium">{error}</p>
+          <button 
+            onClick={() => refreshDevices()}
+            className="mt-4 px-4 py-2 bg-[#5C6E91] text-white rounded-md hover:bg-[#4A5A78] transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
+  if (noDevicesAvailable && nodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-[#f8f6f0] flex items-center justify-center mx-auto mb-4 border-2 border-[#D9E4DD]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5C6E91]">
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <path d="M6 12h4" />
+              <path d="M14 12h4" />
+            </svg>
+          </div>
+          <p className="text-lg font-medium text-[#5C6E91]">No Devices Available</p>
+          <p className="text-sm text-[#7A8CA3] mt-1 mb-4">Waiting for devices to connect to the orchestration platform</p>
+          <button 
+            onClick={() => refreshDevices()}
+            className="px-4 py-2 bg-[#C3E8BD] text-[#5C6E91] rounded-md hover:bg-[#A3D89D] transition-colors"
+          >
+            Refresh
+          </button>
         </div>
       </div>
     )

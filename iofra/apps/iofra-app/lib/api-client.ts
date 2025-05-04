@@ -32,7 +32,14 @@ export interface Device {
  */
 export async function fetchDevices(): Promise<Device[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/devices`);
+    const response = await fetch(`${API_BASE_URL}/devices`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Add a reasonable timeout to avoid hanging
+      signal: AbortSignal.timeout(10000),
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch devices: ${response.statusText}`);
@@ -41,8 +48,17 @@ export async function fetchDevices(): Promise<Device[]> {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching devices:', error);
-    return [];
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      // Network error - couldn't reach the server
+      throw new Error('Failed to connect to the orchestration platform');
+    } else if (error instanceof DOMException && error.name === 'AbortError') {
+      // Timeout error
+      throw new Error('Connection to orchestration platform timed out');
+    } else {
+      // Other errors
+      console.error('Error fetching devices:', error);
+      throw error;
+    }
   }
 }
 
@@ -51,7 +67,14 @@ export async function fetchDevices(): Promise<Device[]> {
  */
 export async function fetchDeviceById(deviceId: string): Promise<Device | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/devices/${deviceId}`);
+    const response = await fetch(`${API_BASE_URL}/devices/${deviceId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Add a reasonable timeout to avoid hanging
+      signal: AbortSignal.timeout(5000),
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch device: ${response.statusText}`);
@@ -60,7 +83,12 @@ export async function fetchDeviceById(deviceId: string): Promise<Device | null> 
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error(`Error fetching device ${deviceId}:`, error);
-    return null;
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.error('Network error:', error);
+      return null;
+    } else {
+      console.error(`Error fetching device ${deviceId}:`, error);
+      return null;
+    }
   }
 } 
