@@ -321,77 +321,30 @@ export function WorkflowCanvas() {
     <>
       <ComponentsSidebar />
       <div className="flex-1 h-full" ref={reactFlowWrapper}>
-        {noDevicesAvailable && nodes.length === 0 ? (
-          <div className="flex items-center justify-center h-full bg-[#f5f3eb]">
-            <div className="text-center max-w-md mx-auto p-8 bg-white/90 rounded-lg border border-[#C3E8BD] shadow-lg">
-              <div className="w-16 h-16 rounded-full bg-[#f0f8f0] flex items-center justify-center mx-auto mb-4 border-2 border-[#C3E8BD]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5C6E91]">
-                  <rect x="2" y="6" width="20" height="12" rx="2" />
-                  <path d="M6 12h4" />
-                  <path d="M14 12h4" />
-                </svg>
-              </div>
-              <p className="text-xl font-medium text-[#5C6E91]">No Devices Available</p>
-              <p className="text-sm text-[#7A8CA3] mt-2 mb-6">Waiting for devices to connect to the orchestration platform</p>
-              <div className="flex gap-4 justify-center">
-                <button 
-                  onClick={() => refreshDevices()}
-                  className="px-4 py-2 bg-[#C3E8BD] text-[#5C6E91] rounded-md hover:bg-[#A3D89D] transition-colors flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                    <path d="M21 3v5h-5" />
-                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                    <path d="M8 16H3v5" />
-                  </svg>
-                  Refresh
-                </button>
-              </div>
-              <p className="text-xs text-[#7A8CA3] mt-6">Looking for help? Check the <a href="#" className="text-[#5C6E91] underline">documentation</a></p>
-            </div>
-          </div>
-        ) : (
-          <ReactFlow
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          connectionLineComponent={CustomConnectionLine}
+          fitView
+          attributionPosition="bottom-left"
+        >
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <Controls />
+        </ReactFlow>
+        {selectedNode && (
+          <PropertiesPanel
+            selectedNode={selectedNode}
+            updateNodeProperties={updateEdgesWithSensorData}
             nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onInit={setReactFlowInstance}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onNodeClick={onNodeClick}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            defaultEdgeOptions={{ type: 'custom' }}
-            connectionLineComponent={CustomConnectionLine}
-            fitView
-            deleteKeyCode="Delete"
-            selectionKeyCode="Shift"
-          >
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="#D9E4DD" />
-            <Controls className="bg-white/80 rounded-lg border border-[#D9E4DD]" />
-            <div className="absolute top-0 left-0 right-0 flex justify-center w-full z-10 p-2">
-              <div className="bg-white/80 px-4 py-2 rounded-lg border border-[#D9E4DD] shadow-sm">
-                <h1 className="text-xl font-medium text-[#5C6E91]">Iofra Workflow Designer</h1>
-              </div>
-            </div>
-            <div className="absolute bottom-4 right-4 bg-white/80 px-3 py-2 rounded-lg border border-[#D9E4DD] shadow-sm text-xs text-[#5C6E91]">
-              <p><strong>Tip:</strong> To delete a connection: </p>
-              <ul className="list-disc pl-5 mt-1">
-                <li>Click on the connection</li>
-                <li>Press Delete key, or</li> 
-                <li>Click the red X button on the connection</li>
-              </ul>
-            </div>
-          </ReactFlow>
+          />
         )}
       </div>
-      <PropertiesPanel 
-        selectedNode={selectedNode} 
-        updateNodeProperties={updateEdgesWithSensorData} 
-        nodes={nodes}
-      />
     </>
   )
 }
