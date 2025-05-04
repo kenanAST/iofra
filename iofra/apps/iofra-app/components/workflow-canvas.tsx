@@ -82,6 +82,7 @@ export function WorkflowCanvas() {
                 sourceNode,
                 targetNode,
                 sensorName,
+                reactFlowInstance,
               },
             },
             eds,
@@ -96,13 +97,16 @@ export function WorkflowCanvas() {
               type: 'custom',
               animated: true,
               style: { stroke: "#86A8E7", strokeWidth: 2 },
+              data: {
+                reactFlowInstance,
+              },
             },
             eds,
           ),
         );
       }
     },
-    [nodes, setEdges],
+    [nodes, setEdges, reactFlowInstance],
   );
 
   // Function to update edges when a trigger's source sensor changes
@@ -273,6 +277,14 @@ export function WorkflowCanvas() {
             <div className="bg-white/80 px-4 py-2 rounded-lg border border-[#D9E4DD] shadow-sm">
               <h1 className="text-xl font-medium text-[#5C6E91]">Iofra Workflow Designer</h1>
             </div>
+          </div>
+          <div className="absolute bottom-4 right-4 bg-white/80 px-3 py-2 rounded-lg border border-[#D9E4DD] shadow-sm text-xs text-[#5C6E91]">
+            <p><strong>Tip:</strong> To delete a connection: </p>
+            <ul className="list-disc pl-5 mt-1">
+              <li>Click on the connection</li>
+              <li>Press Delete key, or</li> 
+              <li>Click the red X button on the connection</li>
+            </ul>
           </div>
         </ReactFlow>
       </div>
