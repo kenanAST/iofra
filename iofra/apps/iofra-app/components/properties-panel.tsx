@@ -15,9 +15,10 @@ import { Thermometer, ToggleRight } from "lucide-react"
 interface PropertiesPanelProps {
   selectedNode: Node | null
   updateNodeProperties: (nodeId: string, properties: any) => void
+  nodes: Node[]
 }
 
-export function PropertiesPanel({ selectedNode, updateNodeProperties }: PropertiesPanelProps) {
+export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: PropertiesPanelProps) {
   const [properties, setProperties] = useState<any>({})
 
   useEffect(() => {
@@ -421,6 +422,54 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties }: Properti
         return (
           <>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="sourceDevice">Source Device</Label>
+                <Select
+                  value={properties.sourceDevice}
+                  onValueChange={(value) => {
+                    // Reset sensor selection when device changes
+                    handlePropertyChange("sourceDevice", value);
+                    handlePropertyChange("sourceSensor", "");
+                  }}
+                >
+                  <SelectTrigger id="sourceDevice">
+                    <SelectValue placeholder="Select device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nodes
+                      .filter((node) => node.type === "device")
+                      .map((device) => (
+                        <SelectItem key={device.id} value={device.id}>
+                          {device.data.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sourceSensor">Source Sensor</Label>
+                <Select
+                  value={properties.sourceSensor}
+                  onValueChange={(value) => handlePropertyChange("sourceSensor", value)}
+                  disabled={!properties.sourceDevice}
+                >
+                  <SelectTrigger id="sourceSensor">
+                    <SelectValue placeholder="Select sensor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.sourceDevice &&
+                      nodes
+                        .find((node) => node.id === properties.sourceDevice)
+                        ?.data.properties.sensors.map((sensor: any) => (
+                          <SelectItem key={sensor.id} value={sensor.id}>
+                            {sensor.name} ({sensor.sensorType})
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="condition">Condition</Label>
                 <Select
