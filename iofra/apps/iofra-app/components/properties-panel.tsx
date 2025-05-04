@@ -52,6 +52,108 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties }: Properti
     if (!selectedNode) return null
 
     switch (selectedNode.type) {
+      case "device":
+        return (
+          <>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={properties.status}
+                  onValueChange={(value) => handlePropertyChange("status", value)}
+                >
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="offline">Offline</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ipAddress">IP Address</Label>
+                <Input
+                  id="ipAddress"
+                  value={properties.ipAddress || ""}
+                  onChange={(e) => handlePropertyChange("ipAddress", e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={properties.location || ""}
+                  onChange={(e) => handlePropertyChange("location", e.target.value)}
+                />
+              </div>
+            </div>
+          </>
+        )
+        
+      case "actuator":
+        return (
+          <>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="actuatorType">Actuator Type</Label>
+                <Select
+                  value={properties.actuatorType}
+                  onValueChange={(value) => handlePropertyChange("actuatorType", value)}
+                >
+                  <SelectTrigger id="actuatorType">
+                    <SelectValue placeholder="Select actuator type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="switch">Switch</SelectItem>
+                    <SelectItem value="relay">Relay</SelectItem>
+                    <SelectItem value="motor">Motor</SelectItem>
+                    <SelectItem value="servo">Servo</SelectItem>
+                    <SelectItem value="valve">Valve</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <Select
+                  value={properties.state}
+                  onValueChange={(value) => handlePropertyChange("state", value)}
+                >
+                  <SelectTrigger id="state">
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="on">On</SelectItem>
+                    <SelectItem value="off">Off</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="protocol">Protocol</Label>
+                <Select
+                  value={properties.protocol}
+                  onValueChange={(value) => handlePropertyChange("protocol", value)}
+                >
+                  <SelectTrigger id="protocol">
+                    <SelectValue placeholder="Select protocol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mqtt">MQTT</SelectItem>
+                    <SelectItem value="http">HTTP</SelectItem>
+                    <SelectItem value="coap">CoAP</SelectItem>
+                    <SelectItem value="modbus">Modbus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </>
+        )
+      
       case "sensor":
         return (
           <>

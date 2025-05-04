@@ -12,7 +12,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { DraggableComponent } from "./draggable-component"
-import { Thermometer, Bell, MessageSquare, Lock, Shield, Download } from "lucide-react"
+import { Thermometer, Bell, MessageSquare, Lock, Shield, Download, HardDrive, ToggleRight } from "lucide-react"
 
 export function ComponentsSidebar() {
   const onDragStart = useCallback((event: React.DragEvent, nodeType: string, nodeName: string) => {
@@ -29,6 +29,20 @@ export function ComponentsSidebar() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarGroup>
+          <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Devices</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-2">
+            <DraggableComponent
+              type="device"
+              name="Device"
+              description="IoT device that can contain sensors and actuators"
+              icon={<HardDrive className="h-5 w-5" />}
+              onDragStart={onDragStart}
+              color="#C3E8BD"
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
           <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Input Components</SidebarGroupLabel>
           <SidebarGroupContent className="space-y-2">
             <DraggableComponent
@@ -38,6 +52,14 @@ export function ComponentsSidebar() {
               icon={<Thermometer className="h-5 w-5" />}
               onDragStart={onDragStart}
               color="#A6D1E6"
+            />
+            <DraggableComponent
+              type="actuator"
+              name="Actuator"
+              description="Controls physical mechanisms or systems"
+              icon={<ToggleRight className="h-5 w-5" />}
+              onDragStart={onDragStart}
+              color="#FFA6A6"
             />
             <DraggableComponent
               type="trigger"

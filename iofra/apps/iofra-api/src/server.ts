@@ -10,7 +10,7 @@ import { errorHandler } from './middlewares/errorHandler';
 // Load environment variables
 dotenv.config();
 
-const app = express();
+const app: express.Express = express();
 const port = process.env.PORT || 3001;
 
 // Middleware

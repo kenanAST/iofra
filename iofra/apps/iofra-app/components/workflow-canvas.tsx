@@ -27,9 +27,13 @@ import { ResponseNode } from "@/components/nodes/response-node"
 import { EncryptNode } from "@/components/nodes/encrypt-node"
 import { MtlsNode } from "@/components/nodes/mtls-node"
 import { OtaNode } from "@/components/nodes/ota-node"
+import { DeviceNode } from "@/components/nodes/device-node"
+import { ActuatorNode } from "@/components/nodes/actuator-node"
 
 const nodeTypes: NodeTypes = {
+  device: DeviceNode,
   sensor: SensorNode,
+  actuator: ActuatorNode,
   trigger: TriggerNode,
   response: ResponseNode,
   encrypt: EncryptNode,
@@ -93,8 +97,12 @@ export function WorkflowCanvas() {
 
   const getDefaultProperties = (type: string) => {
     switch (type) {
+      case "device":
+        return { status: "online", ipAddress: "192.168.1.1", components: [] }
       case "sensor":
         return { sensorType: "temperature", interval: 5, unit: "celsius" }
+      case "actuator":
+        return { actuatorType: "switch", state: "off", protocol: "mqtt" }
       case "trigger":
         return { condition: ">", threshold: 30, topic: "iot/alerts" }
       case "response":
