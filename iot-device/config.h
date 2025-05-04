@@ -5,11 +5,11 @@
 #define DEVICE_ID "esp32_device_001"  // Unique device identifier
 
 // WiFi Configuration
-#define WIFI_SSID "your_wifi_ssid"  // WiFi network name
-#define WIFI_PASSWORD "your_wifi_password"  // WiFi password
+#define WIFI_SSID "HUAWEI nova Y71"  // WiFi network name
+#define WIFI_PASSWORD "1234567891"  // WiFi password
 
 // Server Configuration
-#define SERVER_HOST "your-server-address.com"  // Server hostname
+#define SERVER_HOST "192.168.1.X"  // Replace with your computer's IP address (run ipconfig to find it)
 #define SERVER_PORT 8883  // TLS secured MQTT port
 
 // MQTT Configuration
