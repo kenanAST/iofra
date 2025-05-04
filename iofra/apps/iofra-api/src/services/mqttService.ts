@@ -1,9 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import aedes from 'aedes';
+import Aedes from 'aedes';
 import { createServer } from 'aedes-server-factory';
 import { logger } from '../utils/logger';
 import { Device } from '../models/device';
+import websocketService from './websocketService';
 
 // MQTT server configuration
 const MQTT_PORT = process.env.MQTT_PORT ? parseInt(process.env.MQTT_PORT) : 8883;
@@ -15,7 +16,7 @@ const SERVER_CERT = path.join(CERT_DIR, 'server.crt');
 const SERVER_KEY = path.join(CERT_DIR, 'server.key');
 
 // Initialize Aedes MQTT broker
-const broker = aedes();
+const broker = new Aedes();
 
 // TLS configuration
 const serverOptions = {
@@ -30,21 +31,42 @@ const serverOptions = {
 const mqttServer = createServer(broker, serverOptions);
 
 // Event handlers
-broker.on('client', (client) => {
+broker.on('client', async (client: any) => {
   logger.info(`MQTT Client Connected: ${client.id}`);
+  
+  // Update device status and notify WebSocket clients
+  try {
+    const device = await Device.findOneAndUpdate(
+      { deviceId: client.id },
+      { status: 'online', lastSeen: new Date() },
+      { upsert: true, new: true }
+    );
+    
+    // Notify WebSocket clients about device connection
+    websocketService.notifyDeviceConnected(device);
+  } catch (err: any) {
+    logger.error(`Error updating device status: ${err.message}`);
+  }
 });
 
-broker.on('clientDisconnect', (client) => {
+broker.on('clientDisconnect', async (client: any) => {
   logger.info(`MQTT Client Disconnected: ${client.id}`);
   
-  // Update device status in the database
-  Device.findOneAndUpdate(
-    { deviceId: client.id },
-    { status: 'offline', lastSeen: new Date() }
-  ).catch(err => logger.error(`Error updating device status: ${err.message}`));
+  // Update device status in the database and notify WebSocket clients
+  try {
+    await Device.findOneAndUpdate(
+      { deviceId: client.id },
+      { status: 'offline', lastSeen: new Date() }
+    );
+    
+    // Notify WebSocket clients about device disconnection
+    websocketService.notifyDeviceDisconnected(client.id);
+  } catch (err: any) {
+    logger.error(`Error updating device status: ${err.message}`);
+  }
 });
 
-broker.on('publish', async (packet, client) => {
+broker.on('publish', async (packet: any, client: any) => {
   if (!client) return; // Skip messages published by the broker itself
   
   try {
@@ -58,7 +80,7 @@ broker.on('publish', async (packet, client) => {
       logger.info(`Received telemetry from ${deviceId}`);
       
       // Store telemetry data in database
-      await Device.findOneAndUpdate(
+      const device = await Device.findOneAndUpdate(
         { deviceId },
         { 
           status: 'online',
@@ -70,8 +92,15 @@ broker.on('publish', async (packet, client) => {
             }
           }
         },
-        { upsert: true }
+        { upsert: true, new: true }
       );
+      
+      // Broadcast telemetry data to WebSocket clients
+      websocketService.broadcast('device_telemetry', {
+        deviceId,
+        timestamp: new Date(),
+        data: payload
+      });
     }
     
     // Handle device status updates
@@ -91,14 +120,17 @@ broker.on('publish', async (packet, client) => {
         },
         { upsert: true }
       );
+      
+      // Notify WebSocket clients about device status change
+      websocketService.notifyDeviceStatusChange(deviceId, status);
     }
-  } catch (err) {
+  } catch (err: any) {
     logger.error(`Error processing MQTT message: ${err.message}`);
   }
 });
 
 // Authentication handler with client certificate verification
-broker.authenticate = (client, username, password, callback) => {
+broker.authenticate = (client: any, username: any, password: any, callback: any) => {
   const clientId = client.id;
   
   // Check if the client provided a valid certificate

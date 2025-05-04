@@ -19,7 +19,8 @@
     "helmet": "^7.1.0",
     "mongoose": "^8.14.1",
     "morgan": "^1.10.0",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -28,6 +29,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.13.12",
     "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.56.0",
