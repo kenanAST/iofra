@@ -276,93 +276,116 @@ export function WorkflowCanvas() {
   // Show loading or error states
   if (loading && nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C3E8BD] mx-auto"></div>
-          <p className="mt-2 text-[#5C6E91]">Loading devices...</p>
+      <>
+        <ComponentsSidebar />
+        <div className="flex-1 h-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C3E8BD] mx-auto"></div>
+            <p className="mt-2 text-[#5C6E91]">Loading devices...</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
   
   if (error && nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-red-500">
-          <p className="text-lg font-medium">{error}</p>
-          <button 
-            onClick={() => refreshDevices()}
-            className="mt-4 px-4 py-2 bg-[#5C6E91] text-white rounded-md hover:bg-[#4A5A78] transition-colors"
-          >
-            Retry Connection
-          </button>
+      <>
+        <ComponentsSidebar />
+        <div className="flex-1 h-full flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-8 bg-white/80 rounded-lg border border-red-200 shadow-lg">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4 border-2 border-red-100">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium text-red-600">{error}</p>
+            <p className="text-sm text-gray-600 mt-2 mb-4">The application couldn't connect to the orchestration platform. Please check the backend service status.</p>
+            <button 
+              onClick={() => refreshDevices()}
+              className="px-4 py-2 bg-[#5C6E91] text-white rounded-md hover:bg-[#4A5A78] transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
   
-  if (noDevicesAvailable && nodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-[#f8f6f0] flex items-center justify-center mx-auto mb-4 border-2 border-[#D9E4DD]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5C6E91]">
-              <rect x="2" y="6" width="20" height="12" rx="2" />
-              <path d="M6 12h4" />
-              <path d="M14 12h4" />
-            </svg>
-          </div>
-          <p className="text-lg font-medium text-[#5C6E91]">No Devices Available</p>
-          <p className="text-sm text-[#7A8CA3] mt-1 mb-4">Waiting for devices to connect to the orchestration platform</p>
-          <button 
-            onClick={() => refreshDevices()}
-            className="px-4 py-2 bg-[#C3E8BD] text-[#5C6E91] rounded-md hover:bg-[#A3D89D] transition-colors"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-    )
-  }
-
+  // For the no devices available message, we want to keep the UI consistent
+  // but show a message in the canvas area
   return (
     <>
       <ComponentsSidebar />
       <div className="flex-1 h-full" ref={reactFlowWrapper}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onInit={setReactFlowInstance}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          defaultEdgeOptions={{ type: 'custom' }}
-          connectionLineComponent={CustomConnectionLine}
-          fitView
-          deleteKeyCode="Delete"
-          selectionKeyCode="Shift"
-        >
-          <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="#D9E4DD" />
-          <Controls className="bg-white/80 rounded-lg border border-[#D9E4DD]" />
-          <div className="absolute top-0 left-0 right-0 flex justify-center w-full z-10 p-2">
-            <div className="bg-white/80 px-4 py-2 rounded-lg border border-[#D9E4DD] shadow-sm">
-              <h1 className="text-xl font-medium text-[#5C6E91]">Iofra Workflow Designer</h1>
+        {noDevicesAvailable && nodes.length === 0 ? (
+          <div className="flex items-center justify-center h-full bg-[#f5f3eb]">
+            <div className="text-center max-w-md mx-auto p-8 bg-white/90 rounded-lg border border-[#C3E8BD] shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-[#f0f8f0] flex items-center justify-center mx-auto mb-4 border-2 border-[#C3E8BD]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5C6E91]">
+                  <rect x="2" y="6" width="20" height="12" rx="2" />
+                  <path d="M6 12h4" />
+                  <path d="M14 12h4" />
+                </svg>
+              </div>
+              <p className="text-xl font-medium text-[#5C6E91]">No Devices Available</p>
+              <p className="text-sm text-[#7A8CA3] mt-2 mb-6">Waiting for devices to connect to the orchestration platform</p>
+              <div className="flex gap-4 justify-center">
+                <button 
+                  onClick={() => refreshDevices()}
+                  className="px-4 py-2 bg-[#C3E8BD] text-[#5C6E91] rounded-md hover:bg-[#A3D89D] transition-colors flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M8 16H3v5" />
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+              <p className="text-xs text-[#7A8CA3] mt-6">Looking for help? Check the <a href="#" className="text-[#5C6E91] underline">documentation</a></p>
             </div>
           </div>
-          <div className="absolute bottom-4 right-4 bg-white/80 px-3 py-2 rounded-lg border border-[#D9E4DD] shadow-sm text-xs text-[#5C6E91]">
-            <p><strong>Tip:</strong> To delete a connection: </p>
-            <ul className="list-disc pl-5 mt-1">
-              <li>Click on the connection</li>
-              <li>Press Delete key, or</li> 
-              <li>Click the red X button on the connection</li>
-            </ul>
-          </div>
-        </ReactFlow>
+        ) : (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onInit={setReactFlowInstance}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            defaultEdgeOptions={{ type: 'custom' }}
+            connectionLineComponent={CustomConnectionLine}
+            fitView
+            deleteKeyCode="Delete"
+            selectionKeyCode="Shift"
+          >
+            <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="#D9E4DD" />
+            <Controls className="bg-white/80 rounded-lg border border-[#D9E4DD]" />
+            <div className="absolute top-0 left-0 right-0 flex justify-center w-full z-10 p-2">
+              <div className="bg-white/80 px-4 py-2 rounded-lg border border-[#D9E4DD] shadow-sm">
+                <h1 className="text-xl font-medium text-[#5C6E91]">Iofra Workflow Designer</h1>
+              </div>
+            </div>
+            <div className="absolute bottom-4 right-4 bg-white/80 px-3 py-2 rounded-lg border border-[#D9E4DD] shadow-sm text-xs text-[#5C6E91]">
+              <p><strong>Tip:</strong> To delete a connection: </p>
+              <ul className="list-disc pl-5 mt-1">
+                <li>Click on the connection</li>
+                <li>Press Delete key, or</li> 
+                <li>Click the red X button on the connection</li>
+              </ul>
+            </div>
+          </ReactFlow>
+        )}
       </div>
       <PropertiesPanel 
         selectedNode={selectedNode} 
