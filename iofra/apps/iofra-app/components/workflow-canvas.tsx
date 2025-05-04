@@ -276,7 +276,7 @@ export function WorkflowCanvas() {
   // Show loading or error states
   if (loading && nodes.length === 0) {
     return (
-      <>
+      <div className="flex h-full w-full">
         <ComponentsSidebar />
         <div className="flex-1 h-full flex items-center justify-center">
           <div className="text-center">
@@ -284,13 +284,13 @@ export function WorkflowCanvas() {
             <p className="mt-2 text-[#5C6E91]">Loading devices...</p>
           </div>
         </div>
-      </>
+      </div>
     )
   }
   
   if (error && nodes.length === 0) {
     return (
-      <>
+      <div className="flex h-full w-full">
         <ComponentsSidebar />
         <div className="flex-1 h-full flex items-center justify-center">
           <div className="text-center max-w-md mx-auto p-8 bg-white/80 rounded-lg border border-red-200 shadow-lg">
@@ -311,14 +311,14 @@ export function WorkflowCanvas() {
             </button>
           </div>
         </div>
-      </>
+      </div>
     )
   }
   
   // For the no devices available message, we want to keep the UI consistent
   // but show a message in the canvas area
   return (
-    <>
+    <div className="flex h-full w-full">
       <ComponentsSidebar />
       <div className="flex-1 h-full" ref={reactFlowWrapper}>
         <ReactFlow
@@ -341,14 +341,15 @@ export function WorkflowCanvas() {
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <Controls />
         </ReactFlow>
-        {selectedNode && (
-          <PropertiesPanel
-            selectedNode={selectedNode}
-            updateNodeProperties={updateEdgesWithSensorData}
-            nodes={nodes}
-          />
-        )}
       </div>
-    </>
+      {/* Properties Panel should be outside the ReactFlow container */}
+      {selectedNode && (
+        <PropertiesPanel
+          selectedNode={selectedNode}
+          updateNodeProperties={updateEdgesWithSensorData}
+          nodes={nodes}
+        />
+      )}
+    </div>
   )
 }
