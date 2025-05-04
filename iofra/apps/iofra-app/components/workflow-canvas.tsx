@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import ReactFlow, {
   addEdge,
   useNodesState,
@@ -30,6 +30,7 @@ import { OtaNode } from "@/components/nodes/ota-node"
 import { DeviceNode } from "@/components/nodes/device-node"
 import { CustomEdge } from "@/components/custom-edge"
 import { CustomConnectionLine } from "@/components/custom-connection-line" 
+import { useDevices, type DeviceNode as DeviceNodeType } from "@/hooks/useDevices"
 
 const nodeTypes: NodeTypes = {
   device: DeviceNode,
@@ -50,6 +51,49 @@ export function WorkflowCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const { deviceNodes, loading, error } = useDevices()
+  
+  // Set initial nodes when device data is loaded
+  useEffect(() => {
+    // Only add device nodes from API when we don't have any nodes yet
+    // This prevents wiping out user-added nodes
+    if (deviceNodes.length > 0 && nodes.length === 0) {
+      setNodes(deviceNodes);
+    }
+    
+    // Update existing device nodes with fresh data
+    if (deviceNodes.length > 0 && nodes.length > 0) {
+      setNodes(prevNodes => {
+        const nodeMap = new Map(prevNodes.map(node => [node.id, node]));
+        
+        // Update positions of existing device nodes
+        const updatedDeviceNodes = deviceNodes.map(deviceNode => {
+          const existingNode = nodeMap.get(deviceNode.id);
+          if (existingNode && existingNode.type === 'device') {
+            // Keep the position of existing nodes, but update the data
+            return {
+              ...deviceNode,
+              position: existingNode.position,
+            };
+          }
+          return deviceNode;
+        });
+        
+        // Filter out device nodes that already exist
+        const newDeviceNodes = updatedDeviceNodes.filter(
+          deviceNode => !nodeMap.has(deviceNode.id)
+        );
+        
+        // Get non-device nodes
+        const nonDeviceNodes = prevNodes.filter(
+          node => node.type !== 'device' || !deviceNodes.some(dn => dn.id === node.id)
+        );
+        
+        // Combine all nodes
+        return [...nonDeviceNodes, ...newDeviceNodes];
+      });
+    }
+  }, [deviceNodes, setNodes, nodes.length]);
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
@@ -180,14 +224,18 @@ export function WorkflowCanvas() {
           y: event.clientY - reactFlowBounds.top,
         })
 
-        const newNode = {
-          id: `${type}-${Date.now()}`,
-          type,
-          position,
-          data: { label: name, properties: getDefaultProperties(type) },
-        }
+        // Only create new nodes for non-device types
+        // Devices should come from the API
+        if (type !== 'device') {
+          const newNode = {
+            id: `${type}-${Date.now()}`,
+            type,
+            position,
+            data: { label: name, properties: getDefaultProperties(type) },
+          }
 
-        setNodes((nds) => nds.concat(newNode))
+          setNodes((nds) => nds.concat(newNode))
+        }
       }
     },
     [reactFlowInstance, setNodes],
@@ -195,30 +243,6 @@ export function WorkflowCanvas() {
 
   const getDefaultProperties = (type: string) => {
     switch (type) {
-      case "device":
-        return { 
-          status: "online", 
-          ipAddress: "192.168.1.1", 
-          location: "Office",
-          sensors: [
-            { 
-              id: `sensor-${Date.now()}`, 
-              name: "Temperature Sensor", 
-              sensorType: "temperature", 
-              interval: 5, 
-              unit: "celsius" 
-            }
-          ],
-          actuators: [
-            { 
-              id: `actuator-${Date.now()}`, 
-              name: "Smart Switch", 
-              actuatorType: "switch", 
-              state: "off", 
-              protocol: "mqtt" 
-            }
-          ]
-        }
       case "trigger":
         return { 
           sourceDevice: "", 
@@ -248,6 +272,29 @@ export function WorkflowCanvas() {
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node)
   }, [])
+  
+  // Show loading or error states
+  if (loading && nodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C3E8BD] mx-auto"></div>
+          <p className="mt-2 text-[#5C6E91]">Loading devices...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  if (error && nodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-red-500">
+          <p>Failed to load devices</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

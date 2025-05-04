@@ -31,14 +31,15 @@ export function ComponentsSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="px-2 py-1 text-[#5C6E91]">Devices</SidebarGroupLabel>
           <SidebarGroupContent className="space-y-2">
-            <DraggableComponent
-              type="device"
-              name="Device"
-              description="IoT device with sensors and actuators"
-              icon={<HardDrive className="h-5 w-5" />}
-              onDragStart={onDragStart}
-              color="#C3E8BD"
-            />
+            <div className="p-2 rounded border border-[#D9E4DD] bg-white/70">
+              <div className="flex items-center mb-1">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#C3E8BD] flex items-center justify-center mr-2">
+                  <HardDrive className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-[#5C6E91]">Device</span>
+              </div>
+              <p className="text-xs text-[#7A8CA3]">Devices are auto-discovered from connected IoT devices</p>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
 
