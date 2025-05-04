@@ -4,7 +4,10 @@ import {
   getDeviceById,
   createDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
+  getDeviceTelemetry,
+  initiateOtaUpdate,
+  generateCertificates
 } from '../controllers/deviceController';
 
 const router = Router();
@@ -23,5 +26,14 @@ router.put('/:id', updateDevice);
 
 // DELETE /api/devices/:id - Delete a device
 router.delete('/:id', deleteDevice);
+
+// GET /api/devices/:id/telemetry - Get device telemetry data
+router.get('/:id/telemetry', getDeviceTelemetry);
+
+// POST /api/devices/:id/ota - Initiate OTA update for a device
+router.post('/:id/ota', initiateOtaUpdate);
+
+// POST /api/devices/:id/certificates - Generate certificates for a device
+router.post('/:id/certificates', generateCertificates);
 
 export default router; 
