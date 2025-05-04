@@ -1,0 +1,672 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Secure IoT Platform API",
+    "description": "API for managing IoT devices with secure mTLS communication and OTA updates",
+    "version": "1.0.0",
+    "contact": {
+      "email": "admin@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api",
+      "description": "Development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "devices",
+      "description": "IoT device management"
+    },
+    {
+      "name": "telemetry",
+      "description": "Device telemetry data"
+    },
+    {
+      "name": "ota",
+      "description": "Over-the-air update management"
+    },
+    {
+      "name": "certificates",
+      "description": "Device certificate management"
+    }
+  ],
+  "paths": {
+    "/devices": {
+      "get": {
+        "tags": ["devices"],
+        "summary": "Get all devices",
+        "description": "Returns a list of all registered IoT devices",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["devices"],
+        "summary": "Create a new device",
+        "description": "Registers a new IoT device in the system",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCreateData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Device created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{deviceId}": {
+      "get": {
+        "tags": ["devices"],
+        "summary": "Get device by ID",
+        "description": "Returns a single device by ID",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device to return",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["devices"],
+        "summary": "Update a device",
+        "description": "Updates an existing device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdateData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["devices"],
+        "summary": "Delete a device",
+        "description": "Deletes an existing device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{deviceId}/telemetry": {
+      "get": {
+        "tags": ["telemetry"],
+        "summary": "Get device telemetry data",
+        "description": "Returns telemetry data for a specific device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of telemetry records to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TelemetryData"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{deviceId}/ota": {
+      "post": {
+        "tags": ["ota"],
+        "summary": "Initiate OTA update",
+        "description": "Initiates an over-the-air update for a specific device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["version", "firmwareUrl"],
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "description": "Firmware version"
+                  },
+                  "firmwareUrl": {
+                    "type": "string",
+                    "description": "URL to download the firmware"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "description": "Size of the firmware in bytes"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTA update initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{deviceId}/certificates": {
+      "post": {
+        "tags": ["certificates"],
+        "summary": "Generate device certificates",
+        "description": "Generates certificates for a specific device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "ID of device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificates generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "clientCert": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeviceType": {
+        "type": "string",
+        "enum": ["sensor", "actuator", "gateway"]
+      },
+      "DeviceStatus": {
+        "type": "string",
+        "enum": ["online", "offline", "maintenance"]
+      },
+      "Device": {
+        "type": "object",
+        "required": ["deviceId", "name", "type", "status"],
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "sensor_001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Temperature Sensor"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DeviceType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "location": {
+            "type": "string",
+            "example": "Living Room"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "macAddress": {
+            "type": "string",
+            "example": "aa:bb:cc:dd:ee:ff"
+          },
+          "firmware": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceCreateData": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "example": "sensor_001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Temperature Sensor"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DeviceType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "location": {
+            "type": "string",
+            "example": "Living Room"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "macAddress": {
+            "type": "string",
+            "example": "aa:bb:cc:dd:ee:ff"
+          },
+          "firmware": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "DeviceUpdateData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Updated Sensor Name"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DeviceType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "location": {
+            "type": "string",
+            "example": "Kitchen"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "192.168.1.101"
+          },
+          "macAddress": {
+            "type": "string",
+            "example": "aa:bb:cc:dd:ee:ff"
+          },
+          "firmware": {
+            "type": "string",
+            "example": "1.0.1"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "TelemetryData": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "temperature": 25.4,
+              "humidity": 60.2,
+              "batteryLevel": 3.8
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+} 

@@ -1,89 +1,91 @@
-# IOFRA API
+# Secure IoT API Server
 
-Express.js TypeScript backend for the IOFRA platform.
+This API server provides a secure interface for IoT devices using mutual TLS (mTLS) authentication and MQTT communication.
 
 ## Features
 
-- RESTful API for IoT device management
-- TypeScript for type safety
-- Express.js for HTTP server
-- Jest for testing
-- Clean architecture (controllers, services, models)
+- REST API for device management
+- MQTT broker with mTLS authentication
+- Device telemetry data storage
+- OTA (Over-The-Air) update management
+- Certificate generation and management
 
-## API Endpoints
+## Prerequisites
 
-### Device Management
+- Node.js 16+
+- MongoDB
+- OpenSSL (for certificate generation)
 
-- `GET /api/devices` - Get all devices
-- `GET /api/devices/:id` - Get a specific device by ID
-- `POST /api/devices` - Create a new device
-- `PUT /api/devices/:id` - Update a device
-- `DELETE /api/devices/:id` - Delete a device
+## Installation
 
-### Health Check
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-- `GET /health` - Check API health status
+2. Create a `.env` file with the following content:
+   ```
+   # Server Configuration
+   PORT=3001
+   NODE_ENV=development
 
-## Getting Started
+   # MQTT Configuration
+   MQTT_PORT=8883
 
-### Prerequisites
+   # MongoDB Configuration
+   MONGODB_URI=mongodb://localhost:27017/iot-platform
 
-- Node.js 18+
-- pnpm 9.0.0+
+   # Certificate Configuration
+   CERT_DIR=./certs
 
-### Installation
+   # Logging Configuration
+   LOG_LEVEL=info
+   ```
 
+3. Generate certificates for mTLS:
+   ```bash
+   ../../../scripts/generate-certs.sh
+   ```
+
+## Development
+
+Start the development server:
 ```bash
-# Install dependencies
-pnpm install
+npm run dev
 ```
 
-### Development
+## Building and Running
 
+Build the application:
 ```bash
-# Start the development server
-pnpm dev
+npm run build
 ```
 
-The API will be available at http://localhost:3001.
-
-### Testing
-
+Start the production server:
 ```bash
-# Run tests
-pnpm test
+npm run start
 ```
 
-### Building for Production
+## Testing
 
+Run the tests:
 ```bash
-# Build for production
-pnpm build
-
-# Start the production server
-pnpm start
+npm run test
 ```
 
-## Project Structure
+## API Documentation
 
-```
-src/
-├── config/          # Configuration files
-├── controllers/     # Request handlers
-├── middlewares/     # Middleware functions
-├── models/          # Data models and interfaces
-├── routes/          # API route definitions
-├── services/        # Business logic
-├── utils/           # Utility functions
-└── server.ts        # Entry point
-```
+API documentation is available in Swagger format at `./swagger.json`. You can use tools like Swagger UI to visualize and interact with the API documentation.
 
-## Environment Variables
+## MQTT Topics
 
-Create a `.env` file in the root directory with the following variables:
+The MQTT broker uses the following topics:
 
-```
-PORT=3001
-NODE_ENV=development
-LOG_LEVEL=debug
-``` 
+- `devices/{deviceId}/telemetry`: Device publishes telemetry data
+- `devices/{deviceId}/commands`: Device subscribes for commands
+- `devices/{deviceId}/ota`: Device subscribes for OTA updates
+- `devices/status`: Device publishes status updates
+
+## Security
+
+This server uses mutual TLS (mTLS) for secure authentication between devices and the server. Each device needs its own certificate signed by the server's CA. 
