@@ -3,14 +3,17 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <HTTPClient.h>
 #include "config.h"
 #include "certificates.h"
 
 // Global variables
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
+HTTPClient httpClient;
 unsigned long lastSensorReadTime = 0;
 unsigned long lastOtaCheckTime = 0;
+unsigned long lastHealthCheckTime = 0;
 bool otaInProgress = false;
 
 // Function prototypes
@@ -21,6 +24,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length);
 void publishTelemetry();
 void handleOtaUpdate(byte* payload, unsigned int length);
 void enterDeepSleep();
+void performHealthCheck();
 
 void setup() {
   // Initialize serial for debugging
@@ -73,6 +77,12 @@ void loop() {
     lastOtaCheckTime = currentTime;
   }
   
+  // Perform health check every minute
+  if (currentTime - lastHealthCheckTime >= 60000 && !otaInProgress) {
+    performHealthCheck();
+    lastHealthCheckTime = currentTime;
+  }
+  
   // Enter deep sleep if configured
   #ifdef DEEP_SLEEP_DURATION
   if (!otaInProgress) {
@@ -99,6 +109,9 @@ void setupWifi() {
       Serial.println("WiFi connected");
       Serial.println("IP address: ");
       Serial.println(WiFi.localIP());
+      
+      // Perform an initial health check after connecting
+      performHealthCheck();
     }
   } else {
     if (DEBUG) Serial.println("Failed to connect to WiFi");
@@ -116,6 +129,10 @@ void reconnect() {
   
   while (!mqttClient.connected() && attempts < 5) {
     if (DEBUG) Serial.println("Attempting MQTT connection...");
+    if (DEBUG) Serial.print("Connecting to: ");
+    if (DEBUG) Serial.print(SERVER_HOST);
+    if (DEBUG) Serial.print(":");
+    if (DEBUG) Serial.println(SERVER_PORT);
     
     // Attempt to connect with client ID and authentication
     if (mqttClient.connect(DEVICE_ID)) {
@@ -129,7 +146,7 @@ void reconnect() {
       mqttClient.publish("devices/status", "{\"deviceId\":\"" DEVICE_ID "\",\"status\":\"online\"}");
     } else {
       if (DEBUG) {
-        Serial.print("failed, rc=");
+        Serial.print("Connection failed, rc=");
         Serial.print(mqttClient.state());
         Serial.println(" try again in 5 seconds");
       }
@@ -221,11 +238,7 @@ void handleOtaUpdate(byte* payload, unsigned int length) {
       Serial.println(firmwareSize);
     }
     
-    // In a real implementation, you would:
-    // 1. Download the firmware from the URL using HTTPClient 
-    // 2. Verify the firmware signature/hash for authenticity
-    // 3. Use the Update library to apply the update
-    // 4. Restart the device
+    
     
     otaInProgress = true;
     // Simulated update process
@@ -254,4 +267,114 @@ void enterDeepSleep() {
   if (DEBUG) Serial.println("Going to sleep now");
   delay(100);
   esp_deep_sleep_start();
+}
+
+void performHealthCheck() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (DEBUG) {
+      Serial.println("\n--- NETWORK DIAGNOSTICS ---");
+      Serial.print("Device IP: ");
+      Serial.println(WiFi.localIP());
+      Serial.print("Gateway IP: ");
+      Serial.println(WiFi.gatewayIP());
+      Serial.print("Subnet Mask: ");
+      Serial.println(WiFi.subnetMask());
+      Serial.print("DNS Server: ");
+      Serial.println(WiFi.dnsIP());
+      Serial.print("Signal strength (RSSI): ");
+      Serial.print(WiFi.RSSI());
+      Serial.println(" dBm");
+      
+      // Try different server addresses - both IP and hostname
+      Serial.print("Target server: ");
+      Serial.print(SERVER_HOST);
+      Serial.print(":");
+      Serial.println(SERVER_PORT);
+      
+      // Non-TLS test to port 3001
+      Serial.println("\n--- HTTP HEALTH CHECK ---");
+    }
+    
+    // Regular HTTP client (not secure)
+    WiFiClient httpWifiClient;
+    HTTPClient http;
+    
+    // Initialize HTTP request to IP address explicitly
+    String healthEndpoint = "http://" + String(SERVER_HOST) + ":3001/health";
+    if (DEBUG) {
+      Serial.print("Performing health check: ");
+      Serial.println(healthEndpoint);
+    }
+    
+    http.begin(httpWifiClient, healthEndpoint);
+    http.setTimeout(10000); // Increase timeout to 10 seconds
+    
+    // Send GET request
+    if (DEBUG) Serial.println("Sending GET request...");
+    int httpCode = http.GET();
+    
+    // Check result
+    if (httpCode > 0) {
+      if (DEBUG) {
+        Serial.print("HTTP response code: ");
+        Serial.println(httpCode);
+        
+        if (httpCode == HTTP_CODE_OK) {
+          String payload = http.getString();
+          Serial.println("Response payload:");
+          Serial.println(payload);
+        }
+      }
+    } else {
+      if (DEBUG) {
+        Serial.print("HTTP request failed, error: ");
+        Serial.println(http.errorToString(httpCode).c_str());
+      }
+    }
+    
+    // Close connection
+    http.end();
+    
+    // Also try a basic HTTP check to a well-known internet service
+    if (DEBUG) Serial.println("\n--- INTERNET CONNECTIVITY TEST ---");
+    HTTPClient internetTest;
+    internetTest.begin(httpWifiClient, "http://worldtimeapi.org/api/ip");
+    httpCode = internetTest.GET();
+    
+    if (httpCode > 0) {
+      if (DEBUG) {
+        Serial.print("Internet test response: ");
+        Serial.println(httpCode);
+        Serial.println("Device can access the internet");
+      }
+    } else {
+      if (DEBUG) {
+        Serial.println("Internet test failed, device may be isolated from the internet");
+      }
+    }
+    internetTest.end();
+    
+    // Debug MQTT connection issues
+    if (DEBUG) {
+      Serial.println("\n--- MQTT DIAGNOSTICS ---");
+      Serial.print("MQTT connection state: ");
+      switch (mqttClient.state()) {
+        case -4: Serial.println("MQTT_CONNECTION_TIMEOUT"); break;
+        case -3: Serial.println("MQTT_CONNECTION_LOST"); break;
+        case -2: Serial.println("MQTT_CONNECT_FAILED"); break;
+        case -1: Serial.println("MQTT_DISCONNECTED"); break;
+        case 0: Serial.println("MQTT_CONNECTED"); break;
+        case 1: Serial.println("MQTT_CONNECT_BAD_PROTOCOL"); break;
+        case 2: Serial.println("MQTT_CONNECT_BAD_CLIENT_ID"); break;
+        case 3: Serial.println("MQTT_CONNECT_UNAVAILABLE"); break;
+        case 4: Serial.println("MQTT_CONNECT_BAD_CREDENTIALS"); break;
+        case 5: Serial.println("MQTT_CONNECT_UNAUTHORIZED"); break;
+        default: Serial.println("UNKNOWN"); break;
+      }
+    }
+    
+    if (DEBUG) Serial.println("--- END DIAGNOSTICS ---\n");
+  } else {
+    if (DEBUG) Serial.println("WiFi not connected, cannot perform health check");
+  }
 } 
