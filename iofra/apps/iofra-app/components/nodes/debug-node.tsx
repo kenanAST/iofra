@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from "react"
 import { Handle, Position, type NodeProps, useReactFlow } from "reactflow"
-import { Search, ArrowRight, CornerRightDown, Thermometer, ArrowUpRight, Droplets, AlertTriangle } from "lucide-react"
+import { Search, ArrowRight, CornerRightDown, Thermometer, ArrowUpRight, Droplets, AlertTriangle, Trash2 } from "lucide-react"
 import wsClient from "@/lib/websocket-client"
 
 interface DebugData {
@@ -387,6 +387,11 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
   const triggerCount = connectedSensors.filter(s => s.triggerNode).length;
   const directCount = connectedSensors.length - triggerCount;
   
+  // Function to clear debug data
+  const clearDebugData = () => {
+    setDebugData([]);
+  };
+  
   return (
     <div className={`relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 ${expanded ? 'w-64' : 'w-48'}`}>
       <Handle
@@ -447,11 +452,23 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
       
       {expanded && (
         <div className="mt-3 border-t border-[#D9E4DD] pt-2">
-          <h4 className="text-xs font-medium text-[#5C6E91] mb-1">
-            {debugData.length > 0 ? 
-              "Data Flow" + (triggerCount > 0 ? " (Trigger Conditions Met)" : "") : 
-              "Waiting for Data:"}
-          </h4>
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="text-xs font-medium text-[#5C6E91]">
+              {debugData.length > 0 ? 
+                "Data Flow" + (triggerCount > 0 ? " (Trigger Conditions Met)" : "") : 
+                "Waiting for Data:"}
+            </h4>
+            {debugData.length > 0 && (
+              <button 
+                onClick={clearDebugData}
+                className="text-xs text-[#7A8CA3] hover:text-red-500 transition-colors p-1 flex items-center"
+                title="Clear debug data"
+              >
+                <Trash2 className="h-3 w-3" />
+                <span className="ml-1">Clear</span>
+              </button>
+            )}
+          </div>
           {debugData.length > 0 ? (
             <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
               {debugData.map((item, index) => (
