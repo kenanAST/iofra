@@ -74,6 +74,7 @@ export function ComponentsSidebar() {
                       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#C3E8BD] flex items-center justify-center mr-3">
                         <HardDrive className="h-5 w-5 text-white" />
                       </div>
+                      <p className="text-xs text-[#7A8CA3]">{device.deviceId}</p>
                       <div>
                         <div className="flex items-center">
                           <h3 className="text-sm font-medium text-[#5C6E91]">{device.name}</h3>
@@ -81,7 +82,6 @@ export function ComponentsSidebar() {
                             device.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
                           }`}></span>
                         </div>
-                        <p className="text-xs text-[#7A8CA3]">{device.ipAddress || 'No IP'} • {device.location || 'Unknown location'}</p>
                         {device.sensors && device.sensors.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {device.sensors.map((sensor, idx) => (

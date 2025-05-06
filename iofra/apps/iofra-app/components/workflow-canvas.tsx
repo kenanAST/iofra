@@ -53,6 +53,7 @@ export function WorkflowCanvas() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const { deviceNodes, loading, error, noDevicesAvailable, refreshDevices } = useDevices()
   const initializedRef = useRef(false)
+  const prevDeviceNodesRef = useRef<DeviceNodeType[]>([])
   
   // Set initial nodes when device data is loaded
   useEffect(() => {
@@ -60,7 +61,7 @@ export function WorkflowCanvas() {
     // They should only appear when dragged from the sidebar
     
     // Update existing device nodes with fresh data if they're already on the canvas
-    if (deviceNodes.length > 0 && nodes.length > 0 && initializedRef.current) {
+    if (deviceNodes.length > 0 && initializedRef.current) {
       setNodes(prevNodes => {
         // Don't update if there are no device nodes on the canvas
         const existingDeviceNodes = prevNodes.filter(node => node.type === 'device');
@@ -69,21 +70,33 @@ export function WorkflowCanvas() {
         // Get only the device nodes that are already on the canvas
         const existingDeviceNodeIds = existingDeviceNodes.map(node => node.id);
         
+        // Check if any device node data has actually changed
+        const hasChanges = existingDeviceNodeIds.some(id => {
+          const oldDeviceNode = prevDeviceNodesRef.current.find(dn => dn.id === id);
+          const newDeviceNode = deviceNodes.find(dn => dn.id === id);
+          return !oldDeviceNode || JSON.stringify(oldDeviceNode.data) !== JSON.stringify(newDeviceNode?.data);
+        });
+        
+        if (!hasChanges) return prevNodes;
+        
         // Update only existing device nodes with fresh data
-        const updatedNodes = prevNodes.map(node => {
+        return prevNodes.map(node => {
           if (node.type === 'device' && existingDeviceNodeIds.includes(node.id)) {
             const freshDeviceNode = deviceNodes.find(dn => dn.id === node.id);
             if (freshDeviceNode) {
               return {
-                ...freshDeviceNode,
+                ...node,
+                data: {
+                  ...freshDeviceNode.data,
+                  label: freshDeviceNode.data.label,
+                  properties: freshDeviceNode.data.properties,
+                },
                 position: node.position, // Keep position
               };
             }
           }
           return node;
         });
-        
-        return updatedNodes;
       });
     }
     
@@ -91,6 +104,9 @@ export function WorkflowCanvas() {
     if (deviceNodes.length > 0 && !initializedRef.current) {
       initializedRef.current = true;
     }
+    
+    // Update our ref with the latest device nodes
+    prevDeviceNodesRef.current = deviceNodes;
   }, [deviceNodes, setNodes]);
 
   const onConnect: OnConnect = useCallback(
