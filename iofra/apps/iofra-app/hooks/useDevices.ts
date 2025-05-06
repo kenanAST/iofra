@@ -26,17 +26,48 @@ export function useDevices() {
 
   // Convert API device to ReactFlow node format
   const mapDeviceToNode = useCallback((device: Device, index: number): DeviceNode => {
+    // Extract unique sensor types from telemetry data
+    const sensorTypes = new Set<string>();
+    
+    // Find the latest sensor entry with telemetry data
+    const latestSensorsWithTelemetry = device.sensors
+      ?.filter(sensor => sensor.telemetry && typeof sensor.telemetry === 'object')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) || [];
+    
+    // Extract all available sensor types from telemetry
+    latestSensorsWithTelemetry.forEach(sensor => {
+      if (sensor.telemetry && typeof sensor.telemetry === 'object') {
+        Object.keys(sensor.telemetry as Record<string, any>).forEach(key => sensorTypes.add(key));
+      }
+    });
+    
+    // Create a sensor object for each type
+    const formattedSensors = Array.from(sensorTypes).map(type => {
+      // Find the latest reading for this sensor type
+      const latestReading = latestSensorsWithTelemetry.find(
+        sensor => sensor.telemetry && (sensor.telemetry as Record<string, any>)[type] !== undefined
+      );
+      
+      return {
+        id: `${device.deviceId}_${type}`,
+        name: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize first letter
+        sensorType: type,
+        value: latestReading?.telemetry ? (latestReading.telemetry as Record<string, any>)[type] : null,
+        timestamp: latestReading?.timestamp || null
+      };
+    });
+    
     return {
       id: device.deviceId,
       type: 'device',
       position: { x: 100, y: 100 + (index * 150) }, // Position devices in a column
       data: {
-        label: device.name,
+        label: device.name || device.deviceId,
         properties: {
           status: device.status,
           ipAddress: device.ipAddress,
           location: device.location,
-          sensors: device.sensors || [],
+          sensors: formattedSensors,
           actuators: device.actuators || [],
         },
       },

@@ -16,11 +16,13 @@ export interface Device {
     data?: any;
   }>;
   sensors?: Array<{
-    id: string;
-    name: string;
-    sensorType: string;
-    interval?: number;
-    unit?: string;
+    _id: string;
+    timestamp: Date;
+    deviceId: string;
+    telemetry?: Array<{
+      id?: string;
+      data?: any;
+    }>;
   }>;
   actuators?: Array<{
     id: string;

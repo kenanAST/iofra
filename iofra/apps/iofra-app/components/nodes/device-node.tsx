@@ -1,15 +1,93 @@
-import { memo, useEffect } from "react"
+import { memo, useEffect, useState } from "react"
 import { Handle, Position, type NodeProps } from "reactflow"
 import { HardDrive, Thermometer, ToggleRight, Hash } from "lucide-react"
 import { SensorTelemetry } from "../sensor-telemetry"
+import wsClient from "@/lib/websocket-client"
+
+// Define types for the node data
+interface DeviceNodeData {
+  label: string
+  properties: {
+    status?: string
+    ipAddress?: string
+    location?: string
+    sensors?: Array<{
+      id: string
+      name: string
+      sensorType: string
+      value?: any
+      timestamp?: string | Date
+    }>
+    actuators?: Array<{
+      id: string
+      name: string
+      actuatorType: string
+    }>
+  }
+}
 
 export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
   const sensorCount = data.properties?.sensors?.length || 0
   const actuatorCount = data.properties?.actuators?.length || 0
+  const [nodeData, setNodeData] = useState<DeviceNodeData>(data as DeviceNodeData)
 
   useEffect(() => {
-    console.log('MeowCount', data)
+    setNodeData(data as DeviceNodeData)
   }, [data])
+
+  useEffect(() => {
+    if (!id) return
+
+    // Handle device status updates
+    const handleStatusUpdate = (updateData: any) => {
+      if (updateData.deviceId === id) {
+        setNodeData((prev: DeviceNodeData) => ({
+          ...prev,
+          properties: {
+            ...prev.properties,
+            status: updateData.status
+          }
+        }))
+      }
+    }
+
+    // Handle device telemetry updates
+    const handleTelemetryUpdate = (telemetryData: any) => {
+      if (telemetryData.deviceId === id) {
+        setNodeData((prev: DeviceNodeData) => {
+          const updatedSensors = prev.properties?.sensors?.map((sensor) => {
+            // Update sensor values if the telemetry includes data for this sensor
+            if (telemetryData.data[sensor.sensorType]) {
+              return {
+                ...sensor,
+                value: telemetryData.data[sensor.sensorType],
+                timestamp: telemetryData.timestamp
+              }
+            }
+            return sensor
+          })
+
+          return {
+            ...prev,
+            properties: {
+              ...prev.properties,
+              sensors: updatedSensors
+            }
+          }
+        })
+      }
+    }
+
+    // Subscribe to WebSocket events
+    wsClient.on('device_status_update', handleStatusUpdate)
+    wsClient.on('device_telemetry', handleTelemetryUpdate)
+
+    // Clean up when component unmounts
+    return () => {
+      wsClient.off('device_status_update', handleStatusUpdate)
+      wsClient.off('device_telemetry', handleTelemetryUpdate)
+    }
+  }, [id])
 
   return (
     <div className="relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 w-64">
@@ -31,7 +109,7 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
           <HardDrive className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-[#5C6E91]">{data.label}</h3>
+          <h3 className="text-sm font-medium text-[#5C6E91]">{nodeData.label}</h3>
           <p className="text-xs text-[#7A8CA3]">{id || 'No Device ID'}</p>
         </div>
       </div>
@@ -39,8 +117,8 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
       <div className="mt-2 text-xs text-[#7A8CA3] bg-[#F8F6F0] rounded p-1 space-y-1">
         <div className="flex justify-between">
           <span>Status:</span>
-          <span className={data.properties?.status === "online" ? "text-green-500" : "text-red-500"}>
-            {data.properties?.status || "online"}
+          <span className={nodeData.properties?.status === "online" ? "text-green-500" : "text-red-500"}>
+            {nodeData.properties?.status || "online"}
           </span>
         </div>
       </div>
@@ -49,7 +127,7 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
         <div className="mt-2 text-xs border-t border-[#D9E4DD] pt-2">
           <div className="font-medium text-[#5C6E91] mb-1">Components:</div>
           
-          {data.properties?.sensors?.map((sensor: any, index: number) => (
+          {nodeData.properties?.sensors?.map((sensor, index) => (
             <div key={`sensor-${index}`} className="mb-2">
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
@@ -61,13 +139,15 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
                 <SensorTelemetry 
                   deviceId={id} 
                   sensorId={sensor.id} 
-                  sensorType={sensor.sensorType} 
+                  sensorType={sensor.sensorType}
+                  value={sensor.value}
+                  timestamp={sensor.timestamp} 
                 />
               )}
             </div>
           ))}
           
-          {data.properties?.actuators?.map((actuator: any, index: number) => (
+          {nodeData.properties?.actuators?.map((actuator, index) => (
             <div key={`actuator-${index}`} className="flex items-center mb-1">
               <div className="w-4 h-4 rounded-full bg-[#FFA6A6] flex items-center justify-center mr-1">
                 <ToggleRight className="h-2 w-2 text-white" />

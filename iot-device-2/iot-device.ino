@@ -4,8 +4,14 @@
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <HTTPClient.h>
+#include <DHT.h>
 #include "config.h"
 #include "certificates.h"
+
+// DHT Sensor setup
+#define DHTPIN 15       // DHT11 connected to pin 15
+#define DHTTYPE DHT11   // DHT11 sensor type
+DHT dht(DHTPIN, DHTTYPE);
 
 // Global variables
 WiFiClient wifiClient;
@@ -32,6 +38,10 @@ void setup() {
     Serial.begin(115200);
     Serial.println("ESP32 IoT Device starting...");
   }
+
+  // Initialize DHT sensor
+  dht.begin();
+  if (DEBUG) Serial.println("DHT11 sensor initialized");
 
   struct tm t;
   t.tm_year = 2025 - 1900;
@@ -256,9 +266,21 @@ void publishTelemetry() {
   doc["deviceId"] = DEVICE_ID;
   doc["timestamp"] = millis();
   
+  // Read sensor data from DHT11
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  
+  // Check if reading was successful
+  if (isnan(temperature) || isnan(humidity)) {
+    if (DEBUG) Serial.println("Failed to read from DHT sensor!");
+    // Provide fallback values if sensor reading fails
+    temperature = 0;
+    humidity = 0;
+  }
+  
   // Add sensor readings
-  doc["temperature"] = random(2000, 3000) / 100.0; // Simulated temperature 20-30°C
-  doc["humidity"] = random(4000, 8000) / 100.0;    // Simulated humidity 40-80%
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
   doc["batteryLevel"] = random(3000, 4200) / 1000.0; // Simulated battery 3.0-4.2V
   
   // Serialize JSON to a string

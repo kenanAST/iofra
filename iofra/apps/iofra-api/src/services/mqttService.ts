@@ -78,17 +78,21 @@ broker.on('publish', async (packet: any, client: any) => {
       const payload = JSON.parse(packet.payload.toString());
       
       logger.info(`Received telemetry from ${deviceId}`);
-      
+      console.log(payload.temperature);
       // Store telemetry data in database
-      const device = await Device.findOneAndUpdate(
+      await Device.findOneAndUpdate(
         { deviceId },
         { 
           status: 'online',
           lastSeen: new Date(),
           $push: { 
-            telemetry: {
+            sensors: {
+              deviceId: deviceId,
               timestamp: new Date(),
-              data: payload
+              telemetry: {
+                temperature: payload.temperature,
+                humidity: payload.humidity,
+              }
             }
           }
         },

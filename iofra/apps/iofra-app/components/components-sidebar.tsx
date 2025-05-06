@@ -14,6 +14,7 @@ import {
 import { DraggableComponent } from "./draggable-component"
 import { Thermometer, Bell, MessageSquare, Lock, Shield, Download, HardDrive, ToggleRight } from "lucide-react"
 import { useDevices } from "@/hooks/useDevices"
+import { Device } from "@/lib/api-client"
 
 export function ComponentsSidebar() {
   const { devices, noDevicesAvailable, refreshDevices } = useDevices()
@@ -23,6 +24,42 @@ export function ComponentsSidebar() {
     event.dataTransfer.setData("application/nodeName", nodeName)
     event.dataTransfer.effectAllowed = "move"
   }, [])
+
+  // Format sensors to display proper names
+  const getFormattedSensors = useCallback((device: Device) => {
+    if (!device.sensors || !Array.isArray(device.sensors)) return [];
+    
+    // Extract unique sensor types from telemetry data
+    const sensorTypes = new Set<string>();
+    
+    // Find sensor entries with telemetry data
+    const sensorsWithTelemetry = device.sensors
+      .filter(sensor => sensor.telemetry && typeof sensor.telemetry === 'object');
+    
+    // Extract all available sensor types from telemetry
+    sensorsWithTelemetry.forEach(sensor => {
+      if (sensor.telemetry) {
+        // The actual API response has telemetry as a direct object, not an array
+        if (!Array.isArray(sensor.telemetry) && typeof sensor.telemetry === 'object') {
+          Object.keys(sensor.telemetry as Record<string, any>).forEach(key => sensorTypes.add(key));
+        } else if (Array.isArray(sensor.telemetry)) {
+          // Handle telemetry as an array if it's in that format
+          sensor.telemetry.forEach(entry => {
+            if (entry && entry.data && typeof entry.data === 'object') {
+              Object.keys(entry.data).forEach(key => sensorTypes.add(key));
+            }
+          });
+        }
+      }
+    });
+    
+    // Create a sensor object for each type
+    return Array.from(sensorTypes).map(type => ({
+      id: `${device.deviceId}_${type}`,
+      name: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize first letter
+      sensorType: type
+    }));
+  }, []);
 
   return (
     <Sidebar className="w-64 border-r border-[#D9E4DD] bg-[#f8f6f0]">
@@ -58,44 +95,47 @@ export function ComponentsSidebar() {
               </div>
             ) : (
               <div className="space-y-2">
-                {devices.map((device) => (
-                  <div
-                    key={device.deviceId}
-                    className="p-3 rounded-lg border border-[#D9E4DD] bg-white shadow-sm cursor-move transition-all hover:shadow-md"
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData("application/reactflow", "device")
-                      event.dataTransfer.setData("application/nodeName", device.name)
-                      event.dataTransfer.setData("application/deviceId", device.deviceId)
-                      event.dataTransfer.effectAllowed = "move"
-                    }}
-                    draggable
-                  >
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#C3E8BD] flex items-center justify-center mr-3">
-                        <HardDrive className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-xs text-[#7A8CA3]">{device.deviceId}</p>
-                      <div>
-                        <div className="flex items-center">
-                          <h3 className="text-sm font-medium text-[#5C6E91]">{device.name}</h3>
-                          <span className={`ml-2 inline-block w-2 h-2 rounded-full ${
-                            device.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                          }`}></span>
+                {devices.map((device) => {
+                  const formattedSensors = getFormattedSensors(device);
+                  return (
+                    <div
+                      key={device.deviceId}
+                      className="p-3 rounded-lg border border-[#D9E4DD] bg-white shadow-sm cursor-move transition-all hover:shadow-md"
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("application/reactflow", "device")
+                        event.dataTransfer.setData("application/nodeName", device.name || device.deviceId)
+                        event.dataTransfer.setData("application/deviceId", device.deviceId)
+                        event.dataTransfer.effectAllowed = "move"
+                      }}
+                      draggable
+                    >
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#C3E8BD] flex items-center justify-center mr-3">
+                          <HardDrive className="h-5 w-5 text-white" />
                         </div>
-                        {device.sensors && device.sensors.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {device.sensors.map((sensor, idx) => (
-                              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600">
-                                <Thermometer className="h-3 w-3 mr-1" />
-                                {sensor.name}
-                              </span>
-                            ))}
+                        <div>
+                          <div className="flex items-center">
+                            <h3 className="text-sm font-medium text-[#5C6E91]">{device.name || device.deviceId}</h3>
+                            <span className={`ml-2 inline-block w-2 h-2 rounded-full ${
+                              device.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                            }`}></span>
                           </div>
-                        )}
+                          <p className="text-xs text-[#7A8CA3]">{device.deviceId}</p>
+                          {formattedSensors.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {formattedSensors.map((sensor) => (
+                                <span key={sensor.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600">
+                                  <Thermometer className="h-3 w-3 mr-1" />
+                                  {sensor.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 <button 
                   onClick={() => refreshDevices()}
                   className="w-full px-3 py-1.5 bg-[#f0f8f0] text-[#5C6E91] rounded-md hover:bg-[#C3E8BD] transition-colors text-xs flex items-center justify-center"

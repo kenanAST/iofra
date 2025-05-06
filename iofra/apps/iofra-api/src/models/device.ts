@@ -27,6 +27,19 @@ export interface TelemetryData {
 }
 
 /**
+ * Sensor data interface
+ */
+export interface SensorData {
+  _id: string;
+  timestamp: Date;
+  deviceId: string;
+  telemetry: {
+    temperature: number;
+    humidity: number;
+  };
+}
+
+/**
  * Device interface
  */
 export interface IDevice {
@@ -39,6 +52,7 @@ export interface IDevice {
   macAddress?: string;
   firmware?: string;
   lastSeen?: Date;
+  sensors?: SensorData[];
   telemetry?: TelemetryData[];
   certificates?: {
     clientCert: string;
@@ -86,6 +100,12 @@ const deviceSchema = new Schema<DeviceDocument>(
     macAddress: { type: String },
     firmware: { type: String },
     lastSeen: { type: Date },
+    sensors: [{
+      _id: { type: String },
+      timestamp: { type: Date, default: Date.now },
+      deviceId: { type: String },
+      telemetry: { type: Schema.Types.Mixed }
+    }],
     telemetry: [{
       timestamp: { type: Date, default: Date.now },
       data: { type: Schema.Types.Mixed }

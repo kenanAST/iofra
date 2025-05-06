@@ -5,45 +5,52 @@ interface SensorTelemetryProps {
   deviceId: string;
   sensorId: string;
   sensorType: string;
+  value?: number | null;
+  timestamp?: Date | string | null;
 }
 
-export function SensorTelemetry({ deviceId, sensorId, sensorType }: SensorTelemetryProps) {
+export function SensorTelemetry({ 
+  deviceId, 
+  sensorId, 
+  sensorType,
+  value: initialValue,
+  timestamp: initialTimestamp
+}: SensorTelemetryProps) {
   const { deviceData, latestTelemetry, loading, error } = useTelemetry(deviceId);
+  
+  // Use initial value/timestamp if available, otherwise use telemetry data
+  const value = initialValue !== undefined ? initialValue : 
+    (latestTelemetry?.data && latestTelemetry.data[sensorType]);
+  
+  const timestamp = initialTimestamp || latestTelemetry?.timestamp;
 
   // Display appropriate value based on sensor type
   const getTelemetryValue = () => {
-    if (!latestTelemetry?.data) return "No data";
+    if (value === undefined || value === null) return "No data";
 
     switch (sensorType) {
       case "temperature":
-        return `${latestTelemetry.data.temperature?.toFixed(1) || "--"}°C`;
+        return `${Number(value).toFixed(2)}°C`;
       case "humidity":
-        return `${latestTelemetry.data.humidity?.toFixed(1) || "--"}%`;
+        return `${Number(value).toFixed(2)}%`;
       case "motion":
-        return latestTelemetry.data.motion ? "Active" : "Inactive";
+        return value ? "Active" : "Inactive";
       case "light":
-        return `${latestTelemetry.data.light?.toFixed(0) || "--"} lux`;
+        return `${Number(value).toFixed(0)} lux`;
       case "pressure":
-        return `${latestTelemetry.data.pressure?.toFixed(1) || "--"} hPa`;
+        return `${Number(value).toFixed(2)} hPa`;
       default:
-        // Display the first available value
-        const keys = Object.keys(latestTelemetry.data);
-        if (keys.length > 0) {
-          const firstKey = keys[0];
-          const value = latestTelemetry.data[firstKey];
-          return typeof value === "number" ? value.toFixed(1) : value;
-        }
-        return "No data";
+        return typeof value === "number" ? value.toFixed(1) : value;
     }
   };
 
   // Get timestamp in readable format
   const getTimeAgo = () => {
-    if (!latestTelemetry?.timestamp) return "";
+    if (!timestamp) return "";
     
     const now = new Date();
-    const timestamp = new Date(latestTelemetry.timestamp);
-    const diffMs = now.getTime() - timestamp.getTime();
+    const timestampDate = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    const diffMs = now.getTime() - timestampDate.getTime();
     const diffSec = Math.round(diffMs / 1000);
     
     if (diffSec < 60) return `${diffSec}s ago`;
@@ -58,9 +65,9 @@ export function SensorTelemetry({ deviceId, sensorId, sensorType }: SensorTeleme
 
   return (
     <div className="mt-1 pl-5 text-xs">
-      {loading ? (
+      {loading && !value ? (
         <span className="text-gray-400">Loading...</span>
-      ) : latestTelemetry ? (
+      ) : value !== undefined && value !== null ? (
         <div className="flex items-center justify-between">
           <span className="font-medium">{getTelemetryValue()}</span>
           <span className="text-gray-400 text-[10px]">{getTimeAgo()}</span>
