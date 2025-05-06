@@ -23,6 +23,7 @@ export function useDevices() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [noDevicesAvailable, setNoDevicesAvailable] = useState<boolean>(false);
+  const [updateCounter, setUpdateCounter] = useState(0); // Add a counter to force re-renders
 
   // Convert API device to ReactFlow node format
   const mapDeviceToNode = useCallback((device: Device, index: number): DeviceNode => {
@@ -83,6 +84,7 @@ export function useDevices() {
     try {
       const devicesData = await fetchDevices();
       setDevices(devicesData);
+      setUpdateCounter(prev => prev + 1); // Increment counter to trigger re-renders
       
       // Set noDevicesAvailable flag if the API returns an empty array
       if (devicesData.length === 0) {
@@ -110,6 +112,7 @@ export function useDevices() {
           : device
       )
     );
+    setUpdateCounter(prev => prev + 1); // Increment counter to trigger re-renders
   }, []);
 
   // Handle new device connections
@@ -130,6 +133,7 @@ export function useDevices() {
         return [...prevDevices, device];
       }
     });
+    setUpdateCounter(prev => prev + 1); // Increment counter to trigger re-renders
   }, []);
 
   // Handle device disconnections
@@ -149,6 +153,7 @@ export function useDevices() {
       
       return updatedDevices;
     });
+    setUpdateCounter(prev => prev + 1); // Increment counter to trigger re-renders
   }, []);
 
   // Initialize WebSocket connection and event listeners
@@ -166,18 +171,16 @@ export function useDevices() {
     
     // Clean up
     return () => {
-      wsClient.off('device_status_update');
-      wsClient.off('device_connected');
-      wsClient.off('device_disconnected');
+      wsClient.off('device_status_update', handleDeviceStatusUpdate);
+      wsClient.off('device_connected', handleDeviceConnected);
+      wsClient.off('device_disconnected', handleDeviceDisconnected);
     };
   }, [handleDeviceStatusUpdate, handleDeviceConnected, handleDeviceDisconnected, loadDevices]);
 
   // Convert devices to nodes for ReactFlow
-  // const deviceNodes = devices.map(mapDeviceToNode);
   const deviceNodes = useMemo(() => {
-    console.log('devices', devices);
     return devices.map(mapDeviceToNode);
-  }, [devices, mapDeviceToNode]);
+  }, [devices, mapDeviceToNode, updateCounter]); // Add updateCounter to dependencies to force re-render
 
   return {
     devices,
@@ -186,5 +189,6 @@ export function useDevices() {
     error,
     noDevicesAvailable,
     refreshDevices: loadDevices,
+    updateCounter, // Expose the counter so components can use it to detect changes
   };
 } 

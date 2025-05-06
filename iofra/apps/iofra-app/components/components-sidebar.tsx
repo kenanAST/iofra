@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -15,9 +15,68 @@ import { DraggableComponent } from "./draggable-component"
 import { Thermometer, Bell, MessageSquare, Lock, Shield, Download, HardDrive, ToggleRight, Search } from "lucide-react"
 import { useDevices } from "@/hooks/useDevices"
 import { Device } from "@/lib/api-client"
+import wsClient from "@/lib/websocket-client"
 
 export function ComponentsSidebar() {
-  const { devices, noDevicesAvailable, refreshDevices } = useDevices()
+  const { devices, noDevicesAvailable, refreshDevices, updateCounter } = useDevices()
+  // Add a local state to ensure the component re-renders when WS events occur
+  const [localDevices, setLocalDevices] = useState<Device[]>([])
+
+  // Update local state whenever devices change from useDevices hook
+  useEffect(() => {
+    setLocalDevices(devices)
+  }, [devices, updateCounter]) // Include updateCounter to ensure re-renders
+
+  useEffect(() => {
+    // Handle device status updates
+    const handleStatusUpdate = (data: any) => {
+      setLocalDevices(prev => 
+        prev.map(device => 
+          device.deviceId === data.deviceId 
+            ? { ...device, status: data.status } 
+            : device
+        )
+      );
+    };
+
+    // Handle new device connections
+    const handleDeviceConnected = (device: Device) => {
+      setLocalDevices(prev => {
+        // Check if device already exists
+        const exists = prev.some(d => d.deviceId === device.deviceId);
+        if (exists) {
+          // Update existing device
+          return prev.map(d => d.deviceId === device.deviceId ? { ...d, ...device } : d);
+        } else {
+          // Add new device
+          return [...prev, device];
+        }
+      });
+    };
+
+    // Handle device disconnections
+    const handleDeviceDisconnected = (data: any) => {
+      setLocalDevices(prev => 
+        prev.map(device => 
+          device.deviceId === data.deviceId 
+            ? { ...device, status: 'offline' } 
+            : device
+        )
+      );
+    };
+    
+    // Subscribe to WebSocket events
+    wsClient.on('device_status_update', handleStatusUpdate);
+    wsClient.on('device_connected', handleDeviceConnected);
+    wsClient.on('device_disconnected', handleDeviceDisconnected);
+    
+    // Clean up when component unmounts
+    return () => {
+      wsClient.off('device_status_update', handleStatusUpdate);
+      wsClient.off('device_connected', handleDeviceConnected);
+      wsClient.off('device_disconnected', handleDeviceDisconnected);
+    };
+  }, []);
 
   const onDragStart = useCallback((event: React.DragEvent, nodeType: string, nodeName: string) => {
     event.dataTransfer.setData("application/reactflow", nodeType)
@@ -61,6 +120,9 @@ export function ComponentsSidebar() {
     }));
   }, []);
 
+  // Use localDevices for rendering instead of devices from the hook
+  const devicesToDisplay = localDevices.length > 0 ? localDevices : devices;
+
   return (
     <Sidebar className="w-64 border-r border-[#D9E4DD] bg-[#f8f6f0]">
       <SidebarHeader className="p-4 border-b border-[#D9E4DD]">
@@ -95,11 +157,11 @@ export function ComponentsSidebar() {
               </div>
             ) : (
               <div className="space-y-2">
-                {devices.map((device) => {
+                {devicesToDisplay.map((device) => {
                   const formattedSensors = getFormattedSensors(device);
                   return (
                     <div
-                      key={device.deviceId}
+                      key={`${device.deviceId}-${device.status}`} // Add status to key to force re-render
                       className="p-3 rounded-lg border border-[#D9E4DD] bg-white shadow-sm cursor-move transition-all hover:shadow-md"
                       onDragStart={(event) => {
                         event.dataTransfer.setData("application/reactflow", "device")

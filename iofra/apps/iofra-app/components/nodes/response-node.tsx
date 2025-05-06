@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useCallback } from "react"
 import { Handle, Position, type NodeProps, useReactFlow } from "reactflow"
 import { MessageSquare, SendHorizonal, Check, AlertCircle, CornerRightDown, ArrowRight, AlertTriangle, Trash2, Clock, Timer, Edit2 } from "lucide-react"
 import wsClient from "@/lib/websocket-client"
+import { sendEmail, formatAlertEmail } from "@/lib/email-service"
 
 interface ResponseData {
   timestamp: string;
@@ -217,10 +218,10 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     // Prepare data values for message template
     let messageWithValues = messageTemplate;
     if (inputData.value !== undefined) {
-      messageWithValues = messageWithValues.replace("{value}", inputData.value);
+      messageWithValues = messageWithValues.replace(/{value}/g, inputData.value);
     }
     if (inputData.sensorType) {
-      messageWithValues = messageWithValues.replace("{sensorType}", inputData.sensorType);
+      messageWithValues = messageWithValues.replace(/{sensorType}/g, inputData.sensorType);
     }
     
     // Create a new response history entry
@@ -257,25 +258,65 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
         case "email":
           console.log(`EMAIL to ${recipient}: ${messageWithValues}`);
           
-          // SendGrid implementation example
-          // First, install SendGrid: npm install @sendgrid/mail
-          // Then add to the top of this file: import sgMail from '@sendgrid/mail';
-          // sgMail.setApiKey('YOUR_SENDGRID_API_KEY');
-          // const msg = {
-          //   to: recipient,
-          //   from: 'your-verified-sender@example.com',
-          //   subject: `IoFRA Alert: ${inputData.sensorType || 'Sensor'} Trigger`,
-          //   text: messageWithValues,
-          //   html: `<strong>${messageWithValues}</strong>`,
-          // };
-          // sgMail.send(msg)
-          //   .then(() => {
-          //     console.log('Email sent successfully');
-          //   })
-          //   .catch((error) => {
-          //     console.error(error);
-          //   });
+          // Use our email service to send the email
+          const { subject, text, html } = formatAlertEmail(
+            `IoFRA Alert: ${inputData.sensorType || 'Sensor'} Trigger`, 
+            messageWithValues,
+            {
+              deviceName: inputData.sourceName,
+              sensorType: inputData.sensorType,
+              value: inputData.value,
+              timestamp: inputData.timestamp
+            }
+          );
           
+          // Send the email (async)
+          sendEmail({
+            to: recipient,
+            subject,
+            text,
+            html,
+            fromName: "IoFRA Monitoring System"
+          }).then(result => {
+            // Update the response entry status based on email send result
+            if (result.success) {
+              console.log("Email sent successfully");
+              
+              // Update the status in response history
+              setResponseHistory(prev => {
+                return prev.map(entry => {
+                  if (entry.timestamp === responseEntry.timestamp) {
+                    return { ...entry, actionSuccess: true };
+                  }
+                  return entry;
+                });
+              });
+              
+              // Update action status
+              setLastActionStatus('success');
+            } else {
+              console.error("Failed to send email:", result.message);
+              
+              // Update the status in response history
+              setResponseHistory(prev => {
+                return prev.map(entry => {
+                  if (entry.timestamp === responseEntry.timestamp) {
+                    return { 
+                      ...entry, 
+                      actionSuccess: false,
+                      message: `${entry.message} (Error: ${result.message})`
+                    };
+                  }
+                  return entry;
+                });
+              });
+              
+              // Update action status
+              setLastActionStatus('error');
+            }
+          });
+          
+          // Set initial success state while we wait for the async result
           responseEntry.actionSuccess = true;
           break;
           
