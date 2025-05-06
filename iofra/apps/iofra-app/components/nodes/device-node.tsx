@@ -1,8 +1,8 @@
 import { memo } from "react"
 import { Handle, Position, type NodeProps } from "reactflow"
-import { HardDrive, Thermometer, ToggleRight } from "lucide-react"
+import { HardDrive, Thermometer, ToggleRight, Hash } from "lucide-react"
 
-export const DeviceNode = memo(({ data, isConnectable }: NodeProps) => {
+export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
   const sensorCount = data.properties?.sensors?.length || 0
   const actuatorCount = data.properties?.actuators?.length || 0
 
@@ -27,7 +27,7 @@ export const DeviceNode = memo(({ data, isConnectable }: NodeProps) => {
         </div>
         <div>
           <h3 className="text-sm font-medium text-[#5C6E91]">{data.label}</h3>
-          <p className="text-xs text-[#7A8CA3]">IoT Device</p>
+          <p className="text-xs text-[#7A8CA3]">{id || 'No Device ID'}</p>
         </div>
       </div>
 
@@ -37,10 +37,6 @@ export const DeviceNode = memo(({ data, isConnectable }: NodeProps) => {
           <span className={data.properties?.status === "online" ? "text-green-500" : "text-red-500"}>
             {data.properties?.status || "online"}
           </span>
-        </div>
-        <div className="flex justify-between">
-          <span>IP Address:</span>
-          <span>{data.properties?.ipAddress || "192.168.1.1"}</span>
         </div>
       </div>
 

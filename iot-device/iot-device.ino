@@ -8,7 +8,7 @@
 #include "certificates.h"
 
 // Global variables
-WiFiClientSecure wifiClient;
+WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 HTTPClient httpClient;
 unsigned long lastSensorReadTime = 0;
@@ -32,15 +32,29 @@ void setup() {
     Serial.begin(115200);
     Serial.println("ESP32 IoT Device starting...");
   }
+
+  struct tm t;
+  t.tm_year = 2025 - 1900;
+  t.tm_mon = 4;  // May (0-based)
+  t.tm_mday = 6;
+  t.tm_hour = 12;
+  t.tm_min = 0;
+  t.tm_sec = 0;
+  time_t now = mktime(&t);
+  struct timeval tv = { now, 0 };
+  settimeofday(&tv, nullptr);
+
+  Serial.println("🕒 Time set manually");
+
   
   // Setup WiFi connection
   setupWifi();
   
   // Configure mTLS certificates
   if (DEBUG) Serial.println("Setting up TLS certificates...");
-  wifiClient.setCACert(rootCA);
-  wifiClient.setCertificate(deviceCert);
-  wifiClient.setPrivateKey(deviceKey);
+  // wifiClient.setCACert(rootCA);
+  // wifiClient.setCertificate(deviceCert);
+  // wifiClient.setPrivateKey(deviceKey);
   
   // Setup MQTT connection
   setupMQTT();
@@ -121,6 +135,19 @@ void setupWifi() {
 }
 
 void setupMQTT() {
+
+  Serial.print("Testing raw TLS connection to ");
+  Serial.print(SERVER_HOST);
+  Serial.print(":");
+  Serial.println(SERVER_PORT);
+
+  if (wifiClient.connect(SERVER_HOST, SERVER_PORT)) {
+    Serial.println("✅ TLS connection successful!");
+    wifiClient.stop();  // Clean up
+  } else {
+    Serial.println("❌ TLS connection failed.");
+  }
+
   mqttClient.setServer(SERVER_HOST, SERVER_PORT);
   mqttClient.setCallback(mqttCallback);
   // Set larger timeout for secure connection

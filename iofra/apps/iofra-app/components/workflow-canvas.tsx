@@ -56,44 +56,40 @@ export function WorkflowCanvas() {
   
   // Set initial nodes when device data is loaded
   useEffect(() => {
-    // Only add device nodes from API when we don't have any nodes yet
-    // This prevents wiping out user-added nodes
-    if (deviceNodes.length > 0 && nodes.length === 0) {
-      setNodes(deviceNodes);
-      initializedRef.current = true;
-    }
+    // We no longer want to automatically add device nodes to the canvas
+    // They should only appear when dragged from the sidebar
     
-    // Update existing device nodes with fresh data
+    // Update existing device nodes with fresh data if they're already on the canvas
     if (deviceNodes.length > 0 && nodes.length > 0 && initializedRef.current) {
       setNodes(prevNodes => {
-        const nodeMap = new Map(prevNodes.map(node => [node.id, node]));
+        // Don't update if there are no device nodes on the canvas
+        const existingDeviceNodes = prevNodes.filter(node => node.type === 'device');
+        if (existingDeviceNodes.length === 0) return prevNodes;
         
-        // Update positions of existing device nodes
-        const updatedDeviceNodes = deviceNodes.map(deviceNode => {
-          const existingNode = nodeMap.get(deviceNode.id);
-          if (existingNode && existingNode.type === 'device') {
-            // Keep the position of existing nodes, but update the data
-            return {
-              ...deviceNode,
-              position: existingNode.position,
-            };
+        // Get only the device nodes that are already on the canvas
+        const existingDeviceNodeIds = existingDeviceNodes.map(node => node.id);
+        
+        // Update only existing device nodes with fresh data
+        const updatedNodes = prevNodes.map(node => {
+          if (node.type === 'device' && existingDeviceNodeIds.includes(node.id)) {
+            const freshDeviceNode = deviceNodes.find(dn => dn.id === node.id);
+            if (freshDeviceNode) {
+              return {
+                ...freshDeviceNode,
+                position: node.position, // Keep position
+              };
+            }
           }
-          return deviceNode;
+          return node;
         });
         
-        // Filter out device nodes that already exist
-        const newDeviceNodes = updatedDeviceNodes.filter(
-          deviceNode => !nodeMap.has(deviceNode.id)
-        );
-        
-        // Get non-device nodes
-        const nonDeviceNodes = prevNodes.filter(
-          node => node.type !== 'device' || !deviceNodes.some(dn => dn.id === node.id)
-        );
-        
-        // Combine all nodes
-        return [...nonDeviceNodes, ...newDeviceNodes];
+        return updatedNodes;
       });
+    }
+    
+    // Initialize the ref so we know we've processed initial data
+    if (deviceNodes.length > 0 && !initializedRef.current) {
+      initializedRef.current = true;
     }
   }, [deviceNodes, setNodes]);
 
@@ -226,9 +222,28 @@ export function WorkflowCanvas() {
           y: event.clientY - reactFlowBounds.top,
         })
 
-        // Only create new nodes for non-device types
-        // Devices should come from the API
-        if (type !== 'device') {
+        // Handle dropping device from sidebar
+        if (type === 'device') {
+          const deviceId = event.dataTransfer.getData("application/deviceId")
+          const existingDevice = deviceNodes.find(node => node.id === deviceId)
+          
+          if (existingDevice) {
+            // Create a new node based on the existing device data
+            // but at the drop position
+            const newDeviceNode = {
+              ...existingDevice,
+              position,
+            }
+            
+            // Check if this device is already on the canvas
+            const deviceExists = nodes.some(node => node.id === deviceId)
+            
+            if (!deviceExists) {
+              setNodes((nds) => nds.concat(newDeviceNode))
+            }
+          }
+        } else {
+          // For non-device component types
           const newNode = {
             id: `${type}-${Date.now()}`,
             type,
@@ -240,7 +255,7 @@ export function WorkflowCanvas() {
         }
       }
     },
-    [reactFlowInstance, setNodes],
+    [reactFlowInstance, setNodes, deviceNodes, nodes],
   )
 
   const getDefaultProperties = (type: string) => {
@@ -355,3 +370,4 @@ export function WorkflowCanvas() {
     </div>
   )
 }
+
