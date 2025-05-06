@@ -97,13 +97,6 @@ void loop() {
     performHealthCheck();
     lastHealthCheckTime = currentTime;
   }
-  
-  // Enter deep sleep if configured
-  #ifdef DEEP_SLEEP_DURATION
-  if (!otaInProgress) {
-    enterDeepSleep();
-  }
-  #endif
 }
 
 void setupWifi() {
@@ -150,6 +143,7 @@ void setupMQTT() {
 
   mqttClient.setServer(SERVER_HOST, SERVER_PORT);
   mqttClient.setCallback(mqttCallback);
+  mqttClient.setKeepAlive(1);
   // Set larger timeout for secure connection
   wifiClient.setTimeout(15000);
   // Set MQTT timeout
