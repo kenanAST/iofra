@@ -89,6 +89,11 @@ class WebSocketClient {
     if (callbacks) {
       callbacks.push(callback);
     }
+
+    // Auto-connect when a listener is added
+    if (this.socket === null) {
+      this.connect();
+    }
   }
 
   public off(type: string, callback?: (data: any) => void): void {
@@ -113,5 +118,10 @@ class WebSocketClient {
 
 // Create a singleton instance
 const wsClient = new WebSocketClient();
+
+// Automatically connect when on client side
+if (typeof window !== 'undefined') {
+  wsClient.connect();
+}
 
 export default wsClient; 

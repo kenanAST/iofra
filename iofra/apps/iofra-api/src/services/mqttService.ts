@@ -3,7 +3,7 @@ import * as path from 'path';
 import Aedes from 'aedes';
 import { createServer } from 'aedes-server-factory';
 import { logger } from '../utils/logger';
-import { Device } from '../models/device';
+import { Device, DeviceStatus } from '../models/device';
 import websocketService from './websocketService';
 
 // MQTT server configuration
@@ -113,7 +113,7 @@ broker.on('publish', async (packet: any, client: any) => {
       
       // Update device status in database
       await Device.findOneAndUpdate(
-        { deviceId },
+        { deviceId, status: DeviceStatus.ONLINE },
         { 
           status,
           lastSeen: new Date()

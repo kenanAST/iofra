@@ -1,7 +1,7 @@
 import { Server as WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { logger } from '../utils/logger';
-import { Device } from '../models/device';
+import { Device, DeviceStatus } from '../models/device';
 
 // WebSocket server instance
 let wss: WebSocketServer;
@@ -82,7 +82,7 @@ export const notifyDeviceDisconnected = (deviceId: string): void => {
 // Send device list to a specific client
 const sendDeviceList = async (ws: WebSocket): Promise<void> => {
   try {
-    const devices = await Device.find({});
+    const devices = await Device.find({status: DeviceStatus.ONLINE});
     ws.send(JSON.stringify({
       type: 'device_list',
       data: devices

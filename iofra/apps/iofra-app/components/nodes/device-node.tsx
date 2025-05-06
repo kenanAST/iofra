@@ -1,10 +1,15 @@
-import { memo } from "react"
+import { memo, useEffect } from "react"
 import { Handle, Position, type NodeProps } from "reactflow"
 import { HardDrive, Thermometer, ToggleRight, Hash } from "lucide-react"
+import { SensorTelemetry } from "../sensor-telemetry"
 
 export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
   const sensorCount = data.properties?.sensors?.length || 0
   const actuatorCount = data.properties?.actuators?.length || 0
+
+  useEffect(() => {
+    console.log('MeowCount', data)
+  }, [data])
 
   return (
     <div className="relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 w-64">
@@ -45,11 +50,20 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
           <div className="font-medium text-[#5C6E91] mb-1">Components:</div>
           
           {data.properties?.sensors?.map((sensor: any, index: number) => (
-            <div key={`sensor-${index}`} className="flex items-center mb-1">
-              <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
-                <Thermometer className="h-2 w-2 text-white" />
+            <div key={`sensor-${index}`} className="mb-2">
+              <div className="flex items-center">
+                <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
+                  <Thermometer className="h-2 w-2 text-white" />
+                </div>
+                <span className="text-[#7A8CA3]">{sensor.name} ({sensor.sensorType})</span>
               </div>
-              <span className="text-[#7A8CA3]">{sensor.name} ({sensor.sensorType})</span>
+              {id && (
+                <SensorTelemetry 
+                  deviceId={id} 
+                  sensorId={sensor.id} 
+                  sensorType={sensor.sensorType} 
+                />
+              )}
             </div>
           ))}
           

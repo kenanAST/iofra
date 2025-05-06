@@ -11,6 +11,10 @@ export interface Device {
   location?: string;
   lastSeen?: string;
   firmware?: string;
+  telemetry?: Array<{
+    id?: string;
+    data?: any;
+  }>;
   sensors?: Array<{
     id: string;
     name: string;
