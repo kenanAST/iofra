@@ -17,6 +17,8 @@ import ReactFlow, {
   Position,
   type EdgeTypes,
   Edge,
+  type OnEdgesChange,
+  applyEdgeChanges,
 } from "reactflow"
 import "reactflow/dist/style.css"
 
@@ -50,7 +52,7 @@ const edgeTypes: EdgeTypes = {
 export function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [edges, setEdges, _] = useEdgesState([])
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const { deviceNodes, loading, error, noDevicesAvailable, refreshDevices } = useDevices()
@@ -115,18 +117,32 @@ export function WorkflowCanvas() {
     (connection: Connection) => {
       // Get the source and target nodes
       const sourceNode = nodes.find((node) => node.id === connection.source);
-      
-      // Check if this connection is from a trigger node (source)
-      if (sourceNode?.type === 'trigger') {
-        // Check if this trigger already has an outgoing connection
-        const existingConnection = edges.some(edge => edge.source === connection.source);
-        
-        // If there's already a connection, don't add another one
-        if (existingConnection) {
-          return;
+      const targetNode = nodes.find((node) => node.id === connection.target);
+
+      // Prevent multiple incoming connections to Trigger and Debug nodes
+      if (targetNode && (targetNode.type === 'trigger' || targetNode.type === 'debug')) {
+        const existingIncomingEdge = edges.some(edge => edge.target === connection.target);
+        if (existingIncomingEdge) {
+          // Allow connection from a device to a trigger node even if it has an incoming trigger-to-trigger connection
+          // This is for the initial setup where a trigger might be connected to another trigger, then to a device.
+          // However, once a device is connected, no other inputs (even from other triggers) should be allowed.
+          if (targetNode.type === 'trigger' && sourceNode?.type === 'device') {
+            // Check if the existing incoming connection is NOT from a device
+            const existingEdge = edges.find(edge => edge.target === connection.target);
+            const existingSourceNode = nodes.find(node => node.id === existingEdge?.source);
+            if (existingSourceNode && existingSourceNode.type !== 'device') {
+              // If existing connection is not from a device, allow this new device connection
+              // but we might want to remove the old non-device connection or handle it.
+              // For now, let's proceed, but this logic might need refinement for specific scenarios.
+            } else {
+              return; // Already has an incoming connection (likely from a device or another configured source)
+            }
+          } else {
+            return; // Target already has an incoming connection
+          }
         }
       }
-      
+
       // Check if this is a connection from a sensor handle
       if (connection.sourceHandle && connection.sourceHandle.startsWith('sensor-')) {
         const sensorId = connection.sourceHandle.replace('sensor-', '');
@@ -178,6 +194,9 @@ export function WorkflowCanvas() {
                 eds,
               ),
             );
+            
+            // We've handled this connection specially, so return early
+            return;
           }
         } else {
           // For other connections from sensors
@@ -195,9 +214,72 @@ export function WorkflowCanvas() {
               eds,
             ),
           );
+          
+          // We've handled this connection, so return early
+          return;
         }
       }
-      // Check if this is a connection from an actuator handle
+      // Special handling for connecting devices to trigger nodes without specific sensor handles
+      else if (sourceNode?.type === 'device' && targetNode?.type === 'trigger' && !connection.sourceHandle) {
+        // If we're connecting from a device to a trigger without a specific sensor handle,
+        // let's pick the first available sensor and auto-configure
+        const deviceSensors = sourceNode.data.properties?.sensors || [];
+        
+        // Try to find a temperature sensor first, as it's most commonly used with triggers
+        let sensorToUse: any = deviceSensors.find((s: any) => 
+          s.sensorType?.toLowerCase() === 'temperature'
+        );
+        
+        // If no temperature sensor, use the first available one
+        if (!sensorToUse && deviceSensors.length > 0) {
+          sensorToUse = deviceSensors[0];
+        }
+        
+        if (sensorToUse) {
+          // Update the trigger node properties to automatically set the sensor
+          setNodes((nds) =>
+            nds.map((node) => {
+              if (node.id === targetNode.id) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    properties: {
+                      ...node.data.properties,
+                      sourceDevice: sourceNode.id,
+                      sourceSensor: sensorToUse.id,
+                    },
+                  },
+                };
+              }
+              return node;
+            })
+          );
+          
+          // Create edge with sensor info
+          setEdges((eds) =>
+            addEdge(
+              {
+                ...connection,
+                type: 'custom',
+                animated: true,
+                style: { stroke: "#86A8E7", strokeWidth: 2 },
+                data: {
+                  sourceNode,
+                  targetNode,
+                  sensorName: `${sensorToUse.name} (${sensorToUse.sensorType})`,
+                  reactFlowInstance,
+                },
+              },
+              eds,
+            ),
+          );
+          
+          // We've handled this connection specially, so return early
+          return;
+        }
+      }
+      // Check if this connection is from an actuator handle
       else if (connection.sourceHandle && connection.sourceHandle.startsWith('actuator-')) {
         const actuatorId = connection.sourceHandle.replace('actuator-', '');
         const targetNode = nodes.find((node) => node.id === connection.target);
@@ -263,11 +345,17 @@ export function WorkflowCanvas() {
           );
         }
       }
-      // Handle trigger-to-trigger connections
-      else if (sourceNode?.type === 'trigger' && connection.target) {
-        const targetNode = nodes.find((node) => node.id === connection.target);
+      // Check if this connection is from a trigger node (source)
+      else if (sourceNode?.type === 'trigger') {
+        // Check if this trigger already has an outgoing connection
+        const existingConnection = edges.some(edge => edge.source === connection.source);
         
-        // Create edges for trigger-to-trigger or trigger-to-debug connections
+        // If there's already a connection, don't add another one
+        if (existingConnection) {
+          return;
+        }
+        
+        // Create edge for trigger-to-trigger or trigger-to-any connections
         setEdges((eds) =>
           addEdge(
             {
@@ -289,32 +377,78 @@ export function WorkflowCanvas() {
           ),
         );
         
-        // If connecting to a debug node, update it with the trigger data
-        if (targetNode?.type === 'debug') {
-          setNodes((nds) =>
-            nds.map((node) => {
-              if (node.id === targetNode.id) {
-                // Set a flag to force the debug node to check connections immediately
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    connectedTrigger: sourceNode.id,
-                    forceConnectionUpdate: Date.now(), // Force immediate update
-                    properties: {
-                      ...node.data.properties,
-                      connectedTrigger: sourceNode.id,
-                    }
-                  },
-                };
-              }
-              return node;
-            }),
-          );
-        }
+        // Signal reconnection to the target
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === connection.target) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  reconnected: Date.now()
+                }
+              };
+            }
+            return node;
+          })
+        );
+        
+        return;
       }
       // For any other connections
       else {
+        // Check if this is a debug-to-debug connection
+        if (sourceNode?.type === 'debug' && connection.target) {
+          const targetNode = nodes.find((node) => node.id === connection.target);
+          
+          // If connecting to another debug node, create a specific edge for debug pipelines
+          if (targetNode?.type === 'debug') {
+            setEdges((eds) =>
+              addEdge(
+                {
+                  ...connection,
+                  type: 'custom',
+                  animated: true,
+                  style: { stroke: "#86C5D8", strokeWidth: 2 },
+                  data: {
+                    sourceNode,
+                    targetNode,
+                    debugConnection: true,
+                    reactFlowInstance,
+                  },
+                },
+                eds,
+              ),
+            );
+            
+            // Update the target debug node to know about this connection
+            setNodes((nds) =>
+              nds.map((node) => {
+                if (node.id === targetNode.id) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      connectedDebug: sourceNode.id,
+                      forceConnectionUpdate: Date.now(), // Force immediate update
+                      // Also set the checkSourceDebug flag to trigger immediate data flow
+                      checkSourceDebug: Date.now(),
+                      properties: {
+                        ...node.data.properties,
+                        connectedDebug: sourceNode.id,
+                      }
+                    },
+                  };
+                }
+                return node;
+              }),
+            );
+            
+            return; // Early return after handling debug-to-debug connection
+          }
+        }
+        
+        // Default handling for other connections
         setEdges((eds) =>
           addEdge(
             {
@@ -327,6 +461,25 @@ export function WorkflowCanvas() {
             },
             eds,
           ),
+        );
+      }
+
+      // After creating the connection, notify the target node
+      if (connection.target) {
+        // Signal to the target node that it has been reconnected
+        setNodes(nds => 
+          nds.map(node => {
+            if (node.id === connection.target) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  reconnected: Date.now() // Signal reconnection with timestamp
+                }
+              };
+            }
+            return node;
+          })
         );
       }
     },
@@ -478,6 +631,50 @@ export function WorkflowCanvas() {
     setSelectedNode(node)
   }, [])
   
+  // Custom edge change handler to handle removals specially
+  const onEdgesChange: OnEdgesChange = useCallback((changes) => {
+    // Before applying edge changes, check if any of them are removals
+    const edgeRemovals = changes.filter(change => change.type === 'remove');
+    
+    if (edgeRemovals.length > 0) {
+      // For each edge removal, check if we need to update the target node to reset values
+      edgeRemovals.forEach(removal => {
+        if ('id' in removal) {
+          // Find the edge being removed
+          const edgeId = removal.id;
+          const edge = edges.find(e => e.id === edgeId);
+          
+          if (edge) {
+            const targetId = edge.target;
+            const targetNode = nodes.find(node => node.id === targetId);
+            
+            // If target is a trigger or debug node, reset its values
+            if (targetNode && (targetNode.type === 'trigger' || targetNode.type === 'debug')) {
+              // Signal to the node that it should reset values
+              setNodes(nds => 
+                nds.map(node => {
+                  if (node.id === targetId) {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        inputRemoved: Date.now() // Timestamp to trigger reset
+                      }
+                    };
+                  }
+                  return node;
+                })
+              );
+            }
+          }
+        }
+      });
+    }
+    
+    // Apply the changes normally
+    setEdges(eds => applyEdgeChanges(changes, eds));
+  }, [nodes, edges, setNodes, setEdges]);
+
   // Show loading or error states
   if (loading && nodes.length === 0) {
     return (

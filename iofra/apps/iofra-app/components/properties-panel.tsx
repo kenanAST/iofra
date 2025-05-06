@@ -9,11 +9,18 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { X, Info, Activity } from "lucide-react"
+import { X, Info, Activity, AlertCircle } from "lucide-react"
 import { Thermometer, ToggleRight } from "lucide-react"
 import { TelemetryGraph } from "@/components/telemetry-graph"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip } from "@/components/ui/tooltip"
+import { Textarea } from "@/components/ui/textarea"
+
+// Helper function to validate email addresses
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
 
 interface PropertiesPanelProps {
   selectedNode: Node | null
@@ -74,12 +81,6 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
                 <div className="grid grid-cols-2 gap-y-2">
                   <span className="text-[#7A8CA3]">ID:</span>
                   <span className="font-medium text-[#5C6E91]">{selectedNode.id}</span>
-                  
-                  <span className="text-[#7A8CA3]">IP Address:</span>
-                  <span className="font-medium text-[#5C6E91]">{properties.ipAddress || "N/A"}</span>
-                  
-                  <span className="text-[#7A8CA3]">Location:</span>
-                  <span className="font-medium text-[#5C6E91]">{properties.location || "N/A"}</span>
                 </div>
               </div>
 
@@ -298,6 +299,7 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
                     handlePropertyChange("sourceDevice", value);
                     handlePropertyChange("sourceSensor", "");
                   }}
+                  disabled={true}
                 >
                   <SelectTrigger id="sourceDevice">
                     <SelectValue placeholder="Select device" />
@@ -319,7 +321,7 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
                 <Select
                   value={properties.sourceSensor}
                   onValueChange={(value) => handlePropertyChange("sourceSensor", value)}
-                  disabled={!properties.sourceDevice}
+                  disabled={true}
                 >
                   <SelectTrigger id="sourceSensor">
                     <SelectValue placeholder="Select sensor" />
@@ -383,7 +385,10 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="action">Action Type</Label>
-                <Select value={properties.action} onValueChange={(value) => handlePropertyChange("action", value)}>
+                <Select 
+                  value={properties.action || "email"} 
+                  onValueChange={(value) => handlePropertyChange("action", value)}
+                >
                   <SelectTrigger id="action">
                     <SelectValue placeholder="Select action" />
                   </SelectTrigger>
@@ -398,21 +403,62 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="recipient">Recipient</Label>
+                <div className="flex justify-between">
+                  <Label htmlFor="recipient">
+                    {properties.action === "mqtt" ? "Topic" : "Recipient Email"}
+                  </Label>
+                  {properties.action === "email" && properties.recipient && !isValidEmail(properties.recipient) && (
+                    <div className="flex items-center text-red-500 text-xs">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      <span>Invalid email</span>
+                    </div>
+                  )}
+                </div>
                 <Input
                   id="recipient"
+                  type={properties.action === "email" ? "email" : "text"}
                   value={properties.recipient || ""}
                   onChange={(e) => handlePropertyChange("recipient", e.target.value)}
+                  className={properties.action === "email" && properties.recipient && !isValidEmail(properties.recipient) 
+                    ? "border-red-400" 
+                    : ""}
+                  placeholder={properties.action === "email" 
+                    ? "user@example.com" 
+                    : properties.action === "mqtt" 
+                      ? "device/sensors/alerts" 
+                      : "Recipient"}
                 />
+                {properties.action === "email" && (
+                  <p className="text-xs text-[#7A8CA3]">Enter a valid email address to receive alerts</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="message">Message Template</Label>
-                <Input
+                <Textarea
                   id="message"
-                  value={properties.message || ""}
+                  value={properties.message || "Alert triggered from {sensorType} with value {value}"}
                   onChange={(e) => handlePropertyChange("message", e.target.value)}
+                  className="min-h-[80px] font-mono text-xs"
+                  placeholder="Alert triggered from {sensorType} with value {value}"
                 />
+                <p className="text-xs text-[#7A8CA3]">
+                  You can use {"{value}"} and {"{sensorType}"} as placeholders
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="countdownStart">Countdown Time (seconds)</Label>
+                <Input
+                  id="countdownStart"
+                  type="number"
+                  min="1"
+                  value={properties.countdownStart || 5}
+                  onChange={(e) => handlePropertyChange("countdownStart", Number.parseInt(e.target.value))}
+                />
+                <p className="text-xs text-[#7A8CA3]">
+                  Time to wait before sending the alert
+                </p>
               </div>
             </div>
           </>
