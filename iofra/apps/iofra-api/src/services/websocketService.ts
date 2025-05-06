@@ -82,7 +82,8 @@ export const notifyDeviceDisconnected = (deviceId: string): void => {
 // Send device list to a specific client
 const sendDeviceList = async (ws: WebSocket): Promise<void> => {
   try {
-    const devices = await Device.find({status: DeviceStatus.ONLINE});
+    // Return all devices rather than filtering by status
+    const devices = await Device.find();
     ws.send(JSON.stringify({
       type: 'device_list',
       data: devices

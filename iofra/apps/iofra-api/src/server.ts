@@ -9,6 +9,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { connectToDatabase } from './config/database';
 import { startMqttServer } from './services/mqttService';
 import { initWebSocketServer } from './services/websocketService';
+import { initDeviceMonitoring } from './services/deviceMonitoringService';
 import http from 'http';
 
 // Load environment variables
@@ -55,6 +56,9 @@ if (process.env.NODE_ENV !== 'test') {
       
       // Start MQTT server after HTTP server is running
       startMqttServer();
+      
+      // Initialize device monitoring service
+      initDeviceMonitoring();
     });
   }).catch(err => {
     logger.error(`Failed to start server: ${err}`);

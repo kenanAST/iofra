@@ -115,9 +115,9 @@ broker.on('publish', async (packet: any, client: any) => {
       
       logger.info(`Device ${deviceId} status: ${status}`);
       
-      // Update device status in database
+      // Update device status in database - removed status filter to work with all statuses
       await Device.findOneAndUpdate(
-        { deviceId, status: DeviceStatus.ONLINE },
+        { deviceId },
         { 
           status,
           lastSeen: new Date()

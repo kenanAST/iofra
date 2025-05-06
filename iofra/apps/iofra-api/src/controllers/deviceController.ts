@@ -19,7 +19,8 @@ export const getAllDevices = async (
   next: NextFunction
 ) => {
   try {
-    const devices = await Device.find({status: DeviceStatus.ONLINE}).select('-certificates');
+    // Return all devices regardless of status
+    const devices = await Device.find().select('-certificates');
     res.status(200).json(devices);
   } catch (error) {
     logger.error(`Error getting devices: ${error}`);
