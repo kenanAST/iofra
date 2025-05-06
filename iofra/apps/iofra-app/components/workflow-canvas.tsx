@@ -28,6 +28,7 @@ import { EncryptNode } from "@/components/nodes/encrypt-node"
 import { MtlsNode } from "@/components/nodes/mtls-node"
 import { OtaNode } from "@/components/nodes/ota-node"
 import { DeviceNode } from "@/components/nodes/device-node"
+import { DebugNode } from "@/components/nodes/debug-node"
 import { CustomEdge } from "@/components/custom-edge"
 import { CustomConnectionLine } from "@/components/custom-connection-line" 
 import { useDevices, type DeviceNode as DeviceNodeType } from "@/hooks/useDevices"
@@ -39,6 +40,7 @@ const nodeTypes: NodeTypes = {
   encrypt: EncryptNode,
   mtls: MtlsNode,
   ota: OtaNode,
+  debug: DebugNode,
 }
 
 const edgeTypes: EdgeTypes = {
@@ -411,6 +413,12 @@ export function WorkflowCanvas() {
         return { certAuthority: "Let's Encrypt", validityPeriod: 365 }
       case "ota":
         return { version: "1.0.0", rollbackEnabled: true, deltaUpdates: true }
+      case "debug":
+        return { 
+          logLevel: "info", 
+          capturePayload: true, 
+          maxEntries: 5
+        }
       default:
         return {}
     }

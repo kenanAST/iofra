@@ -1,6 +1,6 @@
 import { EdgeProps, getBezierPath, Edge } from 'reactflow';
-import { useMemo } from 'react';
-import { X } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { X, ArrowRight } from 'lucide-react';
 
 export function CustomEdge({
   id,
@@ -28,6 +28,41 @@ export function CustomEdge({
       targetPosition,
     });
   }, [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition]);
+
+  // State for data flow indicators
+  const [dataFlowActive, setDataFlowActive] = useState(false);
+  const [dataFlowIndicators, setDataFlowIndicators] = useState<{ pos: number; key: number }[]>([]);
+
+  // Simulate data flows periodically
+  useEffect(() => {
+    // Every 5-10 seconds show a data flow if this isn't a device-to-trigger connection
+    // (which already have animated paths)
+    const isDeviceToTrigger = data?.sourceNode?.type === 'device' && data?.targetNode?.type === 'trigger';
+    
+    if (!isDeviceToTrigger) {
+      const interval = setInterval(() => {
+        if (Math.random() > 0.7) {
+          // Activate data flow
+          setDataFlowActive(true);
+          
+          // Create 3 indicators spread along the path
+          const indicators = Array.from({ length: 3 }, (_, i) => ({
+            pos: (i + 1) * 0.25, // positions at 25%, 50%, 75% of the path
+            key: Date.now() + i
+          }));
+          setDataFlowIndicators(indicators);
+          
+          // Reset after animation completes
+          setTimeout(() => {
+            setDataFlowActive(false);
+            setDataFlowIndicators([]);
+          }, 2000);
+        }
+      }, Math.random() * 5000 + 5000); // Random interval between 5-10 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [data]);
 
   // Find midpoint for edge controls
   const midX = (sourceX + targetX) / 2;
@@ -79,6 +114,29 @@ export function CustomEdge({
           <X className="stroke-[#ff4d4f]" />
         </g>
       </g>
+      
+      {/* Data flow indicators */}
+      {dataFlowActive && dataFlowIndicators.map((indicator) => (
+        <g key={indicator.key} className="data-flow-indicator">
+          <circle
+            r="4"
+            className="fill-[#86C5D8]"
+            style={{
+              offset: `${indicator.pos * 100}%`,
+              offsetPath: `path('${edgePath}')`,
+            }}
+          >
+            <animate
+              attributeName="offset-distance"
+              from="0%"
+              to="100%"
+              dur="2s"
+              begin="0s"
+              fill="freeze"
+            />
+          </circle>
+        </g>
+      ))}
       
       {showComponentName && (
         <g transform={`translate(${midX}, ${midY - 20})`}>

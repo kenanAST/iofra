@@ -528,6 +528,55 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
           </>
         )
 
+      case "debug":
+        return (
+          <>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="logLevel">Log Level</Label>
+                <Select
+                  value={properties.logLevel}
+                  onValueChange={(value) => handlePropertyChange("logLevel", value)}
+                >
+                  <SelectTrigger id="logLevel">
+                    <SelectValue placeholder="Select log level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="debug">Debug</SelectItem>
+                    <SelectItem value="info">Info</SelectItem>
+                    <SelectItem value="warn">Warning</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="capturePayload"
+                  checked={properties.capturePayload}
+                  onCheckedChange={(checked) => handlePropertyChange("capturePayload", checked)}
+                />
+                <Label htmlFor="capturePayload">Capture Full Payload</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxEntries">Max Entries</Label>
+                <div className="flex items-center space-x-2">
+                  <Slider
+                    id="maxEntries"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={[properties.maxEntries || 5]}
+                    onValueChange={(value) => handlePropertyChange("maxEntries", value[0])}
+                  />
+                  <span className="w-8 text-center">{properties.maxEntries || 5}</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+
       default:
         return <p className="text-sm text-[#7A8CA3]">No properties available for this component type.</p>
     }

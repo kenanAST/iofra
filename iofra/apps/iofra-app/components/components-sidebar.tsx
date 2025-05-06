@@ -12,7 +12,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { DraggableComponent } from "./draggable-component"
-import { Thermometer, Bell, MessageSquare, Lock, Shield, Download, HardDrive, ToggleRight } from "lucide-react"
+import { Thermometer, Bell, MessageSquare, Lock, Shield, Download, HardDrive, ToggleRight, Search } from "lucide-react"
 import { useDevices } from "@/hooks/useDevices"
 import { Device } from "@/lib/api-client"
 
@@ -179,6 +179,14 @@ export function ComponentsSidebar() {
               icon={<Shield className="h-5 w-5" />}
               onDragStart={onDragStart}
               color="#ABDEE6"
+            />
+            <DraggableComponent
+              type="debug"
+              name="Debug"
+              description="Inspect data flowing through connections"
+              icon={<Search className="h-5 w-5" />}
+              onDragStart={onDragStart}
+              color="#86C5D8"
             />
           </SidebarGroupContent>
         </SidebarGroup>
