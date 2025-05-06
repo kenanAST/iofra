@@ -52,6 +52,7 @@ export function WorkflowCanvas() {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const { deviceNodes, loading, error, noDevicesAvailable, refreshDevices } = useDevices()
+  const initializedRef = useRef(false)
   
   // Set initial nodes when device data is loaded
   useEffect(() => {
@@ -59,10 +60,11 @@ export function WorkflowCanvas() {
     // This prevents wiping out user-added nodes
     if (deviceNodes.length > 0 && nodes.length === 0) {
       setNodes(deviceNodes);
+      initializedRef.current = true;
     }
     
     // Update existing device nodes with fresh data
-    if (deviceNodes.length > 0 && nodes.length > 0) {
+    if (deviceNodes.length > 0 && nodes.length > 0 && initializedRef.current) {
       setNodes(prevNodes => {
         const nodeMap = new Map(prevNodes.map(node => [node.id, node]));
         
@@ -93,7 +95,7 @@ export function WorkflowCanvas() {
         return [...nonDeviceNodes, ...newDeviceNodes];
       });
     }
-  }, [deviceNodes, setNodes, nodes.length]);
+  }, [deviceNodes, setNodes]);
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchDevices, type Device } from '@/lib/api-client';
 import wsClient from '@/lib/websocket-client';
 
@@ -142,7 +142,11 @@ export function useDevices() {
   }, [handleDeviceStatusUpdate, handleDeviceConnected, handleDeviceDisconnected, loadDevices]);
 
   // Convert devices to nodes for ReactFlow
-  const deviceNodes = devices.map(mapDeviceToNode);
+  // const deviceNodes = devices.map(mapDeviceToNode);
+  const deviceNodes = useMemo(() => {
+    console.log('devices', devices);
+    return devices.map(mapDeviceToNode);
+  }, [devices, mapDeviceToNode]);
 
   return {
     devices,
