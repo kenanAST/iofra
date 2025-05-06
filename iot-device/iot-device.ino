@@ -37,6 +37,7 @@ void setup() {
   setupWifi();
   
   // Configure mTLS certificates
+  if (DEBUG) Serial.println("Setting up TLS certificates...");
   wifiClient.setCACert(rootCA);
   wifiClient.setCertificate(deviceCert);
   wifiClient.setPrivateKey(deviceKey);
@@ -122,10 +123,22 @@ void setupWifi() {
 void setupMQTT() {
   mqttClient.setServer(SERVER_HOST, SERVER_PORT);
   mqttClient.setCallback(mqttCallback);
+  // Set larger timeout for secure connection
+  wifiClient.setTimeout(15000);
+  // Set MQTT timeout
+  mqttClient.setSocketTimeout(10);  // 10 seconds
+  
+  if (DEBUG) Serial.println("MQTT client configured with timeout of 10 seconds");
 }
 
 void reconnect() {
   int attempts = 0;
+  
+  // First check if WiFi is connected
+  if (WiFi.status() != WL_CONNECTED) {
+    if (DEBUG) Serial.println("WiFi disconnected. Reconnecting first...");
+    setupWifi();
+  }
   
   while (!mqttClient.connected() && attempts < 5) {
     if (DEBUG) Serial.println("Attempting MQTT connection...");
@@ -134,7 +147,11 @@ void reconnect() {
     if (DEBUG) Serial.print(":");
     if (DEBUG) Serial.println(SERVER_PORT);
     
+    // Add a small delay before connection attempt
+    delay(1000);
+    
     // Attempt to connect with client ID and authentication
+    if (DEBUG) Serial.println("Calling mqttClient.connect with client ID: " DEVICE_ID);
     if (mqttClient.connect(DEVICE_ID)) {
       if (DEBUG) Serial.println("Connected to MQTT broker");
       
@@ -163,10 +180,10 @@ void reconnect() {
           case 5: Serial.print("Not authorized"); break;
           default: Serial.print("Unknown error"); break;
         }
-        Serial.println(")");
-        Serial.print("Connection failed, rc=");
-        Serial.print(mqttClient.state());
-        Serial.println(" try again in 5 seconds");
+        if (rc != -2) Serial.println(")");
+        Serial.print("Will retry in 5 seconds, attempt ");
+        Serial.print(attempts + 1);
+        Serial.println(" of 5");
       }
       delay(5000);
     }
