@@ -116,6 +116,17 @@ export function WorkflowCanvas() {
       // Get the source and target nodes
       const sourceNode = nodes.find((node) => node.id === connection.source);
       
+      // Check if this connection is from a trigger node (source)
+      if (sourceNode?.type === 'trigger') {
+        // Check if this trigger already has an outgoing connection
+        const existingConnection = edges.some(edge => edge.source === connection.source);
+        
+        // If there's already a connection, don't add another one
+        if (existingConnection) {
+          return;
+        }
+      }
+      
       // Check if this is a connection from a sensor handle
       if (connection.sourceHandle && connection.sourceHandle.startsWith('sensor-')) {
         const sensorId = connection.sourceHandle.replace('sensor-', '');
@@ -250,32 +261,66 @@ export function WorkflowCanvas() {
               eds,
             ),
           );
-        } else {
-          // For other connections
-          setEdges((eds) =>
-            addEdge(
-              {
-                ...connection,
-                type: 'custom',
-                animated: true,
-                style: { stroke: "#86A8E7", strokeWidth: 2 },
-                data: {
-                  reactFlowInstance,
-                },
-              },
-              eds,
-            ),
-          );
         }
-      } else {
-        // For other connections
+      }
+      // Handle trigger-to-trigger connections
+      else if (sourceNode?.type === 'trigger' && connection.target) {
+        const targetNode = nodes.find((node) => node.id === connection.target);
+        
+        // Create edges for trigger-to-trigger or trigger-to-debug connections
         setEdges((eds) =>
           addEdge(
             {
               ...connection,
               type: 'custom',
               animated: true,
-              style: { stroke: "#86A8E7", strokeWidth: 2 },
+              style: { stroke: "#FECDA6", strokeWidth: 2 },
+              data: {
+                sourceNode,
+                targetNode,
+                triggerConnection: true,
+                reactFlowInstance,
+                // Include the current value for debug nodes to consume
+                triggerValue: sourceNode.data.currentValue,
+                isTriggered: sourceNode.data.isTriggered
+              },
+            },
+            eds,
+          ),
+        );
+        
+        // If connecting to a debug node, update it with the trigger data
+        if (targetNode?.type === 'debug') {
+          setNodes((nds) =>
+            nds.map((node) => {
+              if (node.id === targetNode.id) {
+                // Set a flag to force the debug node to check connections immediately
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    connectedTrigger: sourceNode.id,
+                    forceConnectionUpdate: Date.now(), // Force immediate update
+                    properties: {
+                      ...node.data.properties,
+                      connectedTrigger: sourceNode.id,
+                    }
+                  },
+                };
+              }
+              return node;
+            }),
+          );
+        }
+      }
+      // For any other connections
+      else {
+        setEdges((eds) =>
+          addEdge(
+            {
+              ...connection,
+              type: 'custom',
+              animated: true,
               data: {
                 reactFlowInstance,
               },
@@ -285,7 +330,7 @@ export function WorkflowCanvas() {
         );
       }
     },
-    [nodes, setNodes, setEdges, reactFlowInstance],
+    [nodes, setEdges, edges, reactFlowInstance],
   );
 
   // Function to update edges when a trigger's source sensor changes

@@ -55,6 +55,11 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
     const handleTelemetryUpdate = (telemetryData: any) => {
       if (telemetryData.deviceId === id) {
         setNodeData((prev: DeviceNodeData) => {
+          // Don't update telemetry if device is offline
+          if (prev.properties?.status === "offline") {
+            return prev;
+          }
+          
           const updatedSensors = prev.properties?.sensors?.map((sensor) => {
             // Update sensor values if the telemetry includes data for this sensor
             if (telemetryData.data[sensor.sensorType]) {
