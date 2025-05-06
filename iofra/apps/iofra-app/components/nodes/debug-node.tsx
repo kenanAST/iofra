@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from "react"
 import { Handle, Position, type NodeProps, useReactFlow } from "reactflow"
-import { Search, ArrowRight, CornerRightDown, Thermometer, ArrowUpRight, Droplets } from "lucide-react"
+import { Search, ArrowRight, CornerRightDown, Thermometer, ArrowUpRight, Droplets, AlertTriangle } from "lucide-react"
 import wsClient from "@/lib/websocket-client"
 
 interface DebugData {
@@ -12,12 +12,47 @@ interface DebugData {
   sensorType?: string;
   value?: any;
   data: any;
+  conditionMet?: boolean;
+  triggerInfo?: {
+    condition: string;
+    threshold: number;
+  };
 }
+
+// Helper function to evaluate trigger conditions
+const evaluateTriggerCondition = (value: number, condition: string, threshold: number): boolean => {
+  switch (condition) {
+    case '>':
+      return value > threshold;
+    case '<':
+      return value < threshold;
+    case '==':
+      return value === threshold;
+    case '>=':
+      return value >= threshold;
+    case '<=':
+      return value <= threshold;
+    case '!=':
+      return value !== threshold;
+    default:
+      return false;
+  }
+};
 
 export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
   const [debugData, setDebugData] = useState<DebugData[]>([]);
   const [expanded, setExpanded] = useState<boolean>(true);
-  const [connectedSensors, setConnectedSensors] = useState<string[]>([]);
+  const [connectedSensors, setConnectedSensors] = useState<{
+    id: string, 
+    deviceId: string, 
+    type: string,
+    triggerNode?: {
+      id: string,
+      condition: string,
+      threshold: number
+    }
+  }[]>([]);
+  
   const reactFlowInstance = useReactFlow();
   
   // Identify which specific sensor handles are connected to this debug node
@@ -28,38 +63,116 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
       const edges = reactFlowInstance.getEdges();
       const nodes = reactFlowInstance.getNodes();
       
-      // Find edges connected to this debug node
-      const relevantEdges = edges.filter(edge => 
-        edge.source === id || edge.target === id
-      );
-      
-      // Extract connected sensor IDs from source handles
-      const sensorIds: string[] = [];
-      
-      relevantEdges.forEach(edge => {
-        // For edges where device is the source and has a source handle (specific sensor)
-        if (edge.sourceHandle && edge.sourceHandle.startsWith('sensor-')) {
-          const sensorId = edge.sourceHandle.replace('sensor-', '');
-          sensorIds.push(sensorId);
+      // Store connected sensors with more information
+      const sensorConnections: {
+        id: string, 
+        deviceId: string, 
+        type: string,
+        triggerNode?: {
+          id: string,
+          condition: string,
+          threshold: number
         }
+      }[] = [];
+      
+      // CASE 1: Direct connections from specific sensor handles
+      edges.filter(edge => edge.target === id && edge.sourceHandle?.startsWith('sensor-')).forEach(edge => {
+        const sensorId = edge.sourceHandle!.replace('sensor-', '');
+        const sourceNode = nodes.find(node => node.id === edge.source);
         
-        // For edges where this debug node is the source, check what's on the other side
-        if (edge.source === id) {
-          const targetNode = nodes.find(node => node.id === edge.target);
-          // If connected to a trigger node with a specific sensor configured
-          if (targetNode?.type === 'trigger' && targetNode.data.properties?.sourceSensor) {
-            sensorIds.push(targetNode.data.properties.sourceSensor);
+        if (sourceNode?.type === 'device') {
+          const sensor = sourceNode.data.properties?.sensors?.find((s: any) => s.id === sensorId);
+          if (sensor) {
+            sensorConnections.push({
+              id: sensorId, 
+              deviceId: sourceNode.id, 
+              type: sensor.sensorType
+            });
           }
         }
       });
       
-      setConnectedSensors(sensorIds);
+      // CASE 2: Connections through a trigger node
+      // First find all nodes connected to this debug node
+      const connectedNodeIds = edges
+        .filter(edge => edge.target === id || edge.source === id)
+        .map(edge => edge.target === id ? edge.source : edge.target);
+      
+      // Find all trigger nodes in this set
+      const connectedTriggers = nodes.filter(node => 
+        node.type === 'trigger' && connectedNodeIds.includes(node.id)
+      );
+      
+      // For each trigger, check if it's connected to a device
+      connectedTriggers.forEach(triggerNode => {
+        const triggerSourceDevice = triggerNode.data.properties?.sourceDevice;
+        const triggerSourceSensor = triggerNode.data.properties?.sourceSensor;
+        const condition = triggerNode.data.properties?.condition || '>';
+        const threshold = triggerNode.data.properties?.threshold || 0;
+        
+        if (triggerSourceDevice && triggerSourceSensor) {
+          const deviceNode = nodes.find(node => node.id === triggerSourceDevice);
+          if (deviceNode?.type === 'device') {
+            const sensor = deviceNode.data.properties?.sensors?.find(
+              (s: any) => s.id === triggerSourceSensor
+            );
+            
+            if (sensor) {
+              sensorConnections.push({
+                id: triggerSourceSensor,
+                deviceId: triggerSourceDevice,
+                type: sensor.sensorType,
+                triggerNode: {
+                  id: triggerNode.id,
+                  condition: condition,
+                  threshold: threshold
+                }
+              });
+            }
+          }
+        }
+      });
+      
+      // CASE 3: General connections to device nodes (without triggers)
+      // If the debug node is directly connected to a device node, consider all its sensors connected
+      edges.filter(edge => 
+        (edge.target === id && !edge.sourceHandle) || 
+        (edge.source === id && !edge.targetHandle)
+      ).forEach(edge => {
+        const deviceId = edge.target === id ? edge.source : edge.target;
+        const deviceNode = nodes.find(node => node.id === deviceId);
+        
+        // Only add direct device connections if they're not going through a trigger
+        const isConnectedViaTrigger = connectedTriggers.some(trigger => 
+          trigger.data.properties?.sourceDevice === deviceId
+        );
+        
+        if (!isConnectedViaTrigger && deviceNode?.type === 'device' && deviceNode.data.properties?.sensors) {
+          // Add all sensors from this device
+          deviceNode.data.properties.sensors.forEach((sensor: any) => {
+            // Check if this sensor is already in the list
+            const alreadyExists = sensorConnections.some(conn => 
+              conn.id === sensor.id && conn.deviceId === deviceNode.id
+            );
+            
+            if (!alreadyExists) {
+              sensorConnections.push({
+                id: sensor.id,
+                deviceId: deviceNode.id,
+                type: sensor.sensorType
+              });
+            }
+          });
+        }
+      });
+      
+      setConnectedSensors(sensorConnections);
     };
     
     // Initial update
     updateConnectedSensors();
     
-    // Set a periodic checker instead of event listener due to ReactFlow API limitations
+    // Set a periodic checker
     const checkInterval = setInterval(() => {
       updateConnectedSensors();
     }, 2000);
@@ -71,70 +184,107 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
   
   // Subscribe to flow data events
   useEffect(() => {
-    if (!id || connectedSensors.length === 0) return;
+    if (!id) return;
     
     const handleFlowData = (flowData: any) => {
       // Only add data if there's an actual value to display
-      if (flowData.value !== undefined && flowData.sensorId && connectedSensors.includes(flowData.sensorId)) {
-        const newData = {
-          timestamp: new Date().toLocaleTimeString(),
-          source: flowData.source || 'unknown',
-          sourceName: flowData.sourceName || 'unknown',
-          target: flowData.target || 'unknown',
-          targetName: flowData.targetName || 'unknown',
-          sensorType: flowData.sensorType,
-          value: flowData.value,
-          data: flowData.data || {}
-        };
+      if (flowData.value !== undefined && flowData.sensorId) {
+        // Find the corresponding connected sensor
+        const connectedSensor = connectedSensors.find(
+          sensor => sensor.id === flowData.sensorId && 
+                   sensor.deviceId === flowData.source
+        );
         
-        setDebugData(prev => {
-          const maxEntries = data.properties?.maxEntries || 5;
-          const updatedData = [newData, ...prev].slice(0, maxEntries);
-          return updatedData;
-        });
+        if (connectedSensor) {
+          // Check if this sensor has a trigger attached
+          let conditionMet = true; // Default for sensors without triggers
+          
+          if (connectedSensor.triggerNode) {
+            // Only allow data to flow if trigger condition is met
+            conditionMet = evaluateTriggerCondition(
+              flowData.value, 
+              connectedSensor.triggerNode.condition, 
+              connectedSensor.triggerNode.threshold
+            );
+            
+            // If condition is not met and we're after a trigger, don't show the data
+            if (!conditionMet) {
+              return;
+            }
+          }
+          
+          const newData = {
+            timestamp: new Date().toLocaleTimeString(),
+            source: flowData.source || 'unknown',
+            sourceName: flowData.sourceName || 'unknown',
+            target: flowData.target || 'unknown',
+            targetName: flowData.targetName || 'unknown',
+            sensorType: flowData.sensorType,
+            value: flowData.value,
+            data: flowData.data || {},
+            conditionMet,
+            triggerInfo: connectedSensor.triggerNode ? {
+              condition: connectedSensor.triggerNode.condition,
+              threshold: connectedSensor.triggerNode.threshold
+            } : undefined
+          };
+          
+          setDebugData(prev => {
+            const maxEntries = data.properties?.maxEntries || 5;
+            const updatedData = [newData, ...prev].slice(0, maxEntries);
+            return updatedData;
+          });
+        }
       }
     };
     
-    // Get connected edges and look for real sensor data from connected sensors only
-    const identifyRealConnections = () => {
-      const edges = reactFlowInstance.getEdges();
+    // Check for real data from all connected sensors
+    const checkRealData = () => {
+      if (connectedSensors.length === 0) return;
+      
       const nodes = reactFlowInstance.getNodes();
       
-      // Find edges where this debug node is the source or target
-      const connectedEdges = edges.filter(edge => 
-        edge.source === id || edge.target === id
-      );
-      
-      // For each connected edge, check for actual sensor data
-      connectedEdges.forEach(edge => {
-        const sourceNode = nodes.find(node => node.id === edge.source);
-        const targetNode = nodes.find(node => node.id === edge.target);
+      // For each connected sensor
+      connectedSensors.forEach(sensor => {
+        const deviceNode = nodes.find(n => n.id === sensor.deviceId);
         
-        if (sourceNode && targetNode) {
-          // Only create flow data for device nodes with actual sensor values
-          if (sourceNode.type === 'device' && sourceNode.data.properties?.sensors) {
-            // Only check sensors that are specifically connected
-            sourceNode.data.properties.sensors.forEach((sensor: any) => {
-              if (sensor.value !== undefined && connectedSensors.includes(sensor.id)) {
-                // Create flow data with actual sensor data
-                handleFlowData({
-                  path: [id],
-                  source: sourceNode.id,
-                  sourceName: sourceNode.data.label,
-                  target: targetNode.id,
-                  targetName: targetNode.data.label,
-                  sensorType: sensor.sensorType,
-                  sensorId: sensor.id,
-                  value: sensor.value,
-                  data: { 
-                    [sensor.sensorType]: sensor.value,
-                    unit: sensor.sensorType === 'temperature' ? "°C" : 
-                          sensor.sensorType === 'humidity' ? "%" : "",
-                    timestamp: new Date().toISOString()
-                  }
-                });
-              }
-            });
+        if (deviceNode?.type === 'device' && deviceNode.data.properties?.sensors) {
+          // Find the sensor data
+          const sensorData = deviceNode.data.properties.sensors.find(
+            (s: any) => s.id === sensor.id
+          );
+          
+          if (sensorData && sensorData.value !== undefined) {
+            // If there's a trigger node, only send data if condition is met
+            let sendData = true;
+            
+            if (sensor.triggerNode) {
+              sendData = evaluateTriggerCondition(
+                sensorData.value, 
+                sensor.triggerNode.condition, 
+                sensor.triggerNode.threshold
+              );
+            }
+            
+            if (sendData) {
+              // Create flow data with actual sensor data
+              handleFlowData({
+                path: [id],
+                source: deviceNode.id,
+                sourceName: deviceNode.data.label,
+                target: id,
+                targetName: data.label || "Debug",
+                sensorType: sensor.type,
+                sensorId: sensor.id,
+                value: sensorData.value,
+                data: { 
+                  [sensor.type]: sensorData.value,
+                  unit: sensor.type === 'temperature' ? "°C" : 
+                        sensor.type === 'humidity' ? "%" : "",
+                  timestamp: new Date().toISOString()
+                }
+              });
+            }
           }
         }
       });
@@ -142,44 +292,50 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
     
     // Check for real data periodically
     const interval = setInterval(() => {
-      identifyRealConnections();
-    }, 3000);
+      checkRealData();
+    }, 2000);
     
     // Listen for real-time updates via WebSocket
     const handleTelemetryUpdate = (telemetryData: any) => {
-      // Find connected device that matches this telemetry
-      const edges = reactFlowInstance.getEdges();
-      const nodes = reactFlowInstance.getNodes();
+      if (!telemetryData.deviceId || !telemetryData.data) return;
       
-      const deviceNode = nodes.find(node => 
-        node.type === 'device' && node.id === telemetryData.deviceId
+      // Check if we have any sensors from this device
+      const deviceSensors = connectedSensors.filter(
+        sensor => sensor.deviceId === telemetryData.deviceId
       );
       
-      if (deviceNode) {
-        // Check if the device is connected to this debug node
-        const isConnected = edges.some(edge => 
-          (edge.source === deviceNode.id && edge.target === id) ||
-          (edge.target === deviceNode.id && edge.source === id)
-        );
+      if (deviceSensors.length > 0) {
+        const nodes = reactFlowInstance.getNodes();
+        const deviceNode = nodes.find(node => node.id === telemetryData.deviceId);
         
-        if (isConnected && telemetryData.data) {
-          // Extract sensor data from telemetry but only for connected sensors
-          const deviceSensors = deviceNode.data.properties?.sensors || [];
-          
-          deviceSensors.forEach((sensor: any) => {
-            // Only process connected sensors
-            if (connectedSensors.includes(sensor.id) && telemetryData.data[sensor.sensorType] !== undefined) {
-              handleFlowData({
-                path: [id],
-                source: deviceNode.id,
-                sourceName: deviceNode.data.label,
-                target: id,
-                targetName: data.label || "Debug",
-                sensorType: sensor.sensorType,
-                sensorId: sensor.id,
-                value: telemetryData.data[sensor.sensorType],
-                data: { [sensor.sensorType]: telemetryData.data[sensor.sensorType] }
-              });
+        if (deviceNode) {
+          // Process each sensor we're connected to
+          deviceSensors.forEach(sensor => {
+            if (telemetryData.data[sensor.type] !== undefined) {
+              // If there's a trigger node, check if condition is met
+              let sendData = true;
+              
+              if (sensor.triggerNode) {
+                sendData = evaluateTriggerCondition(
+                  telemetryData.data[sensor.type], 
+                  sensor.triggerNode.condition, 
+                  sensor.triggerNode.threshold
+                );
+              }
+              
+              if (sendData) {
+                handleFlowData({
+                  path: [id],
+                  source: deviceNode.id,
+                  sourceName: deviceNode.data.label,
+                  target: id,
+                  targetName: data.label || "Debug",
+                  sensorType: sensor.type,
+                  sensorId: sensor.id,
+                  value: telemetryData.data[sensor.type],
+                  data: { [sensor.type]: telemetryData.data[sensor.type] }
+                });
+              }
             }
           });
         }
@@ -227,6 +383,10 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
     }
   };
   
+  // Count number of triggers vs direct connections
+  const triggerCount = connectedSensors.filter(s => s.triggerNode).length;
+  const directCount = connectedSensors.length - triggerCount;
+  
   return (
     <div className={`relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 ${expanded ? 'w-64' : 'w-48'}`}>
       <Handle
@@ -267,15 +427,30 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
           <span className="text-green-500">Active</span>
         </div>
         <div className="flex justify-between mt-1">
-          <span>Connected Sensors:</span>
-          <span>{connectedSensors.length}</span>
+          <span>Connections:</span>
+          <span>
+            {triggerCount > 0 && (
+              <span className="inline-flex items-center mr-1">
+                <AlertTriangle className="h-3 w-3 text-[#FECDA6] mr-1" />
+                {triggerCount}
+              </span>
+            )}
+            {directCount > 0 && (
+              <span className="inline-flex items-center">
+                <ArrowRight className="h-3 w-3 text-[#86C5D8] mr-1" />
+                {directCount}
+              </span>
+            )}
+          </span>
         </div>
       </div>
       
       {expanded && (
         <div className="mt-3 border-t border-[#D9E4DD] pt-2">
           <h4 className="text-xs font-medium text-[#5C6E91] mb-1">
-            {debugData.length > 0 ? "Real Sensor Data:" : "Waiting for Data:"}
+            {debugData.length > 0 ? 
+              "Data Flow" + (triggerCount > 0 ? " (Trigger Conditions Met)" : "") : 
+              "Waiting for Data:"}
           </h4>
           {debugData.length > 0 ? (
             <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
@@ -285,7 +460,9 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
                     {getSensorIcon(item.sensorType)}
                     <span className="font-medium">{item.timestamp}</span>
                     {item.value !== undefined && (
-                      <span className="ml-auto font-bold">
+                      <span className={`ml-auto font-bold ${
+                        item.triggerInfo ? 'text-[#FECDA6]' : ''
+                      }`}>
                         {formatValue(item.value, item.sensorType)}
                       </span>
                     )}
@@ -299,6 +476,16 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
                       {item.targetName}
                     </span>
                   </div>
+                  
+                  {item.triggerInfo && (
+                    <div className="mt-1 flex items-center">
+                      <AlertTriangle className="h-3 w-3 text-[#FECDA6] mr-1" />
+                      <span className="text-[#FECDA6] text-[9px]">
+                        Trigger: {formatValue(item.value, item.sensorType)} {item.triggerInfo.condition} {item.triggerInfo.threshold}
+                      </span>
+                    </div>
+                  )}
+                  
                   {data.properties?.capturePayload !== false && (
                     <div className="mt-1 font-mono bg-[#E2F0F7] p-1 rounded overflow-x-auto whitespace-nowrap text-[8px]">
                       {JSON.stringify(item.data)}
@@ -310,11 +497,18 @@ export const DebugNode = memo(({ data, isConnectable, id }: NodeProps) => {
           ) : (
             <div className="flex flex-col items-center justify-center h-16 text-[#7A8CA3] text-xs">
               {connectedSensors.length > 0 ? (
-                <p>Waiting for data from connected sensors...</p>
+                triggerCount > 0 ? (
+                  <>
+                    <p>Waiting for trigger conditions to be met</p>
+                    <p className="text-[9px] mt-1">Data will flow when conditions are satisfied</p>
+                  </>
+                ) : (
+                  <p>Waiting for data from connected sensors...</p>
+                )
               ) : (
                 <>
-                  <p>Connect to specific sensor handles</p>
-                  <p className="text-[9px] mt-1">Use sensor connection points from device nodes</p>
+                  <p>Connect to sensors or triggers</p>
+                  <p className="text-[9px] mt-1">Sensors will be automatically detected</p>
                 </>
               )}
             </div>
