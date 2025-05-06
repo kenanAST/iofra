@@ -91,12 +91,7 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
 
   return (
     <div className="relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 w-64">
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={isConnectable}
-        className="w-3 h-3 bg-[#C3E8BD] border-2 border-white"
-      />
+      {/* Main device handles */}
       <Handle
         type="target"
         position={Position.Left}
@@ -128,12 +123,22 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
           <div className="font-medium text-[#5C6E91] mb-1">Components:</div>
           
           {nodeData.properties?.sensors?.map((sensor, index) => (
-            <div key={`sensor-${index}`} className="mb-2">
+            <div key={`sensor-${index}`} className="mb-2 relative">
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded-full bg-[#A6D1E6] flex items-center justify-center mr-1">
                   <Thermometer className="h-2 w-2 text-white" />
                 </div>
                 <span className="text-[#7A8CA3]">{sensor.name} ({sensor.sensorType})</span>
+                
+                {/* Individual sensor handle */}
+                <Handle
+                  id={`sensor-${sensor.id}`}
+                  type="source"
+                  position={Position.Right}
+                  isConnectable={isConnectable}
+                  className="w-2.5 h-2.5 bg-[#A6D1E6] border-2 border-white"
+                  style={{ right: -8, top: '50%' }}
+                />
               </div>
               {id && (
                 <SensorTelemetry 
@@ -148,11 +153,21 @@ export const DeviceNode = memo(({ data, id, isConnectable }: NodeProps) => {
           ))}
           
           {nodeData.properties?.actuators?.map((actuator, index) => (
-            <div key={`actuator-${index}`} className="flex items-center mb-1">
+            <div key={`actuator-${index}`} className="flex items-center mb-1 relative">
               <div className="w-4 h-4 rounded-full bg-[#FFA6A6] flex items-center justify-center mr-1">
                 <ToggleRight className="h-2 w-2 text-white" />
               </div>
               <span className="text-[#7A8CA3]">{actuator.name} ({actuator.actuatorType})</span>
+              
+              {/* Individual actuator handle */}
+              <Handle
+                id={`actuator-${actuator.id}`}
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+                className="w-2.5 h-2.5 bg-[#FFA6A6] border-2 border-white"
+                style={{ right: -8, top: '50%' }}
+              />
             </div>
           ))}
         </div>

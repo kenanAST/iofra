@@ -113,39 +113,158 @@ export function WorkflowCanvas() {
     (connection: Connection) => {
       // Get the source and target nodes
       const sourceNode = nodes.find((node) => node.id === connection.source);
-      const targetNode = nodes.find((node) => node.id === connection.target);
       
-      // If the source node is a device and the target is a trigger, let's check if the trigger
-      // has a sensor specified
-      if (sourceNode?.type === 'device' && targetNode?.type === 'trigger') {
-        const triggerProperties = targetNode.data.properties;
+      // Check if this is a connection from a sensor handle
+      if (connection.sourceHandle && connection.sourceHandle.startsWith('sensor-')) {
+        const sensorId = connection.sourceHandle.replace('sensor-', '');
+        const targetNode = nodes.find((node) => node.id === connection.target);
         
-        // If sourceSensor is specified, find the sensor name
-        let sensorName = "";
-        if (triggerProperties.sourceSensor) {
+        // If the target is a trigger node
+        if (sourceNode?.type === 'device' && targetNode?.type === 'trigger') {
+          // Find the sensor data from the source node
           const sensor = sourceNode.data.properties.sensors.find(
-            (s: any) => s.id === triggerProperties.sourceSensor
+            (s: any) => s.id === sensorId
           );
-          sensorName = sensor ? `${sensor.name} (${sensor.sensorType})` : "";
-        }
-        
-        setEdges((eds) =>
-          addEdge(
-            {
-              ...connection,
-              type: 'custom',
-              animated: true,
-              style: { stroke: "#86A8E7", strokeWidth: 2 },
-              data: {
-                sourceNode,
-                targetNode,
-                sensorName,
-                reactFlowInstance,
+          
+          // Update the trigger node properties to automatically set the sensor
+          if (sensor) {
+            setNodes((nds) =>
+              nds.map((node) => {
+                if (node.id === targetNode.id) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      properties: {
+                        ...node.data.properties,
+                        sourceDevice: sourceNode.id,
+                        sourceSensor: sensorId,
+                      },
+                    },
+                  };
+                }
+                return node;
+              })
+            );
+            
+            // Create edge with sensor info
+            setEdges((eds) =>
+              addEdge(
+                {
+                  ...connection,
+                  type: 'custom',
+                  animated: true,
+                  style: { stroke: "#86A8E7", strokeWidth: 2 },
+                  data: {
+                    sourceNode,
+                    targetNode,
+                    sensorName: `${sensor.name} (${sensor.sensorType})`,
+                    reactFlowInstance,
+                  },
+                },
+                eds,
+              ),
+            );
+          }
+        } else {
+          // For other connections from sensors
+          setEdges((eds) =>
+            addEdge(
+              {
+                ...connection,
+                type: 'custom',
+                animated: true,
+                style: { stroke: "#86A8E7", strokeWidth: 2 },
+                data: {
+                  reactFlowInstance,
+                },
               },
-            },
-            eds,
-          ),
-        );
+              eds,
+            ),
+          );
+        }
+      }
+      // Check if this is a connection from an actuator handle
+      else if (connection.sourceHandle && connection.sourceHandle.startsWith('actuator-')) {
+        const actuatorId = connection.sourceHandle.replace('actuator-', '');
+        const targetNode = nodes.find((node) => node.id === connection.target);
+        
+        if (sourceNode?.type === 'device') {
+          // Find the actuator data
+          const actuator = sourceNode.data.properties.actuators.find(
+            (a: any) => a.id === actuatorId
+          );
+          
+          // Create edge with actuator info
+          setEdges((eds) =>
+            addEdge(
+              {
+                ...connection,
+                type: 'custom',
+                animated: true,
+                style: { stroke: "#86A8E7", strokeWidth: 2 },
+                data: {
+                  sourceNode,
+                  targetNode,
+                  actuatorName: actuator ? `${actuator.name} (${actuator.actuatorType})` : "",
+                  reactFlowInstance,
+                },
+              },
+              eds,
+            ),
+          );
+        }
+      }
+      // Original code for other connections
+      else if (sourceNode?.type === 'device' && connection.target) {
+        const targetNode = nodes.find((node) => node.id === connection.target);
+        
+        if (targetNode?.type === 'trigger') {
+          const triggerProperties = targetNode.data.properties;
+          
+          // If sourceSensor is specified, find the sensor name
+          let sensorName = "";
+          if (triggerProperties.sourceSensor) {
+            const sensor = sourceNode.data.properties.sensors.find(
+              (s: any) => s.id === triggerProperties.sourceSensor
+            );
+            sensorName = sensor ? `${sensor.name} (${sensor.sensorType})` : "";
+          }
+          
+          setEdges((eds) =>
+            addEdge(
+              {
+                ...connection,
+                type: 'custom',
+                animated: true,
+                style: { stroke: "#86A8E7", strokeWidth: 2 },
+                data: {
+                  sourceNode,
+                  targetNode,
+                  sensorName,
+                  reactFlowInstance,
+                },
+              },
+              eds,
+            ),
+          );
+        } else {
+          // For other connections
+          setEdges((eds) =>
+            addEdge(
+              {
+                ...connection,
+                type: 'custom',
+                animated: true,
+                style: { stroke: "#86A8E7", strokeWidth: 2 },
+                data: {
+                  reactFlowInstance,
+                },
+              },
+              eds,
+            ),
+          );
+        }
       } else {
         // For other connections
         setEdges((eds) =>
@@ -164,7 +283,7 @@ export function WorkflowCanvas() {
         );
       }
     },
-    [nodes, setEdges, reactFlowInstance],
+    [nodes, setNodes, setEdges, reactFlowInstance],
   );
 
   // Function to update edges when a trigger's source sensor changes

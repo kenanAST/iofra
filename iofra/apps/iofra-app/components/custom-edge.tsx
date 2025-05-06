@@ -37,8 +37,13 @@ export function CustomEdge({
   const sourceNode = data?.sourceNode;
   const targetNode = data?.targetNode;
   
+  // Get component name (sensor or actuator)
   const sensorName = data?.sensorName || "";
-  const showSensorName = sensorName !== "";
+  const actuatorName = data?.actuatorName || "";
+  const componentName = sensorName || actuatorName;
+  const showComponentName = componentName !== "";
+  const bgColor = sensorName ? "bg-[#A6D1E6]/20" : (actuatorName ? "bg-[#FFA6A6]/20" : "bg-white/80");
+  const borderColor = sensorName ? "stroke-[#A6D1E6]" : (actuatorName ? "stroke-[#FFA6A6]" : "stroke-[#86A8E7]");
 
   const onEdgeClick = (evt: React.MouseEvent<SVGGElement, MouseEvent>, id: string) => {
     evt.stopPropagation();
@@ -75,15 +80,15 @@ export function CustomEdge({
         </g>
       </g>
       
-      {showSensorName && (
+      {showComponentName && (
         <g transform={`translate(${midX}, ${midY - 20})`}>
           <rect
-            x="-50"
+            x="-60"
             y="-10"
-            width="100"
+            width="120"
             height="20"
             rx="5"
-            className="fill-white/80 stroke-[#86A8E7]"
+            className={`fill-white/80 ${borderColor}`}
           />
           <text
             x="0"
@@ -92,7 +97,7 @@ export function CustomEdge({
             dominantBaseline="middle"
             textAnchor="middle"
           >
-            {sensorName}
+            {componentName}
           </text>
         </g>
       )}
