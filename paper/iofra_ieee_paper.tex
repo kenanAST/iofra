@@ -91,7 +91,17 @@ IOFRA's low-code orchestration interface allows users to create IoT applications
     \item Alert and notification configuration
     \item Integration with external services and APIs
     \item Custom code blocks for advanced functionality when needed
+    \item Debug node for real-time workflow monitoring and troubleshooting
+    \item Email integration for notifications and alerts
+    \item Live data visualization with real-time updates
 \end{itemize}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{canvas.png}
+\caption{IOFRA's low-code orchestration interface showing the visual workflow designer and drag-and-drop components.}
+\label{fig:canvas}
+\end{figure}
 
 \section{Extensibility Features}
 IOFRA is designed for extensibility at multiple levels:
@@ -113,6 +123,9 @@ The cloud backend supports:
     \item Custom component development
     \item Webhook support for event-driven automation
     \item Data export and import capabilities
+    \item Email service integration for notifications
+    \item Debug and monitoring tools for workflow analysis
+    \item Real-time device health monitoring with heartbeat checks
 \end{itemize}
 
 \section{Implementation Details}
@@ -127,6 +140,8 @@ The IoT device firmware is implemented in C++ using the Arduino framework. Key c
     \item Power management with configurable deep sleep
     \item Secure storage for certificates and configuration
     \item Extensible plugin system for device capabilities
+    \item HTTP health check API for device status monitoring
+    \item Heartbeat mechanism for connection state verification
 \end{itemize}
 
 \subsection{Cloud Backend Implementation}
@@ -139,6 +154,9 @@ The cloud backend is implemented as a Node.js application with a microservices a
     \item Telemetry storage and processing service
     \item Low-code orchestration engine
     \item Extension marketplace and management
+    \item Email service for notifications and alerts
+    \item WebSocket service for real-time device updates
+    \item Device monitoring service with heartbeat checks
 \end{itemize}
 
 \section{Evaluation}
