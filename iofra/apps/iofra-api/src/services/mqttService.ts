@@ -92,6 +92,7 @@ broker.on('publish', async (packet: any, client: any) => {
               telemetry: {
                 temperature: payload.temperature,
                 humidity: payload.humidity,
+                waterLevel: payload.waterLevel,
               }
             }
           }

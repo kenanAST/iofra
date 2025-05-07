@@ -64,6 +64,8 @@ export function TelemetryGraph({ deviceId, sensorType, sensorName, unit = "" }: 
         return `${Number(value).toFixed(1)} hPa`
       case "light":
         return `${Number(value).toFixed(0)} lux`
+      case "waterLevel":
+        return `${Number(value).toFixed(1)}%`
       default:
         return `${value}${unit ? ` ${unit}` : ''}`
     }
