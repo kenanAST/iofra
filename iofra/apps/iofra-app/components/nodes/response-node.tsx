@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useCallback } from "react"
 import { Handle, Position, type NodeProps, useReactFlow } from "reactflow"
-import { MessageSquare, SendHorizonal, Check, AlertCircle, CornerRightDown, ArrowRight, AlertTriangle, Trash2, Clock, Timer, Edit2 } from "lucide-react"
+import { MessageSquare, SendHorizonal, Check, AlertCircle, CornerRightDown, ArrowRight, AlertTriangle, Trash2, Clock, Timer, Edit2, Pause, Play } from "lucide-react"
 import wsClient from "@/lib/websocket-client"
 import { sendEmail, formatAlertEmail } from "@/lib/email-service"
 
@@ -41,6 +41,11 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
   const [isEditingCountdown, setIsEditingCountdown] = useState<boolean>(false);
   // Track if countdown is active
   const [isCountdownActive, setIsCountdownActive] = useState<boolean>(false);
+  // Track if countdown is paused
+  const [isCountdownPaused, setIsCountdownPaused] = useState<boolean>(false);
+  // State for message template editing
+  const [isEditingMessage, setIsEditingMessage] = useState<boolean>(false);
+  const [messageTemplate, setMessageTemplate] = useState<string>(data.properties?.message);
   
   const reactFlowInstance = useReactFlow();
   
@@ -146,29 +151,20 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     return () => clearInterval(intervalId);
   }, [id, reactFlowInstance, validateConnection]);
   
-  // Check if data has conditions met to execute a response
-  const shouldExecuteResponse = useCallback((inputData: any) => {
-    // If data comes from a trigger, check if condition is met
-    if (inputData.triggerInfo && !inputData.conditionMet) {
-      return false;
-    }
-    
-    // For debug nodes or devices, we consider any valid non-zero data as actionable
-    if (inputData.value !== undefined && inputData.value !== null && inputData.value !== 0) {
-      return true;
-    }
-    
-    return false;
-  }, []);
-  
   // Time-based countdown effect
   useEffect(() => {
-    if (!isCountdownActive) return;
+    if (!isCountdownActive || isCountdownPaused) return;
+    
+    console.log('Countdown active, setting up interval');
     
     const intervalId = setInterval(() => {
       setCountdowns(prev => {
         const newCountdowns = { ...prev };
         let shouldExecute = false;
+        let hasActiveCountdown = false;
+        
+        // Debug what we're counting down
+        console.log('Current countdowns:', newCountdowns);
         
         Object.entries(newCountdowns).forEach(([sourceId, count]) => {
           if (count > 0) {
@@ -176,22 +172,45 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
             if (count === 1) {
               shouldExecute = true;
             }
+            if (count > 1) {
+              hasActiveCountdown = true;
+            }
           }
         });
+        
+        // If no active countdowns remain, set isCountdownActive to false
+        if (!hasActiveCountdown && !shouldExecute) {
+          console.log('No active countdowns, disabling countdown timer');
+          setTimeout(() => setIsCountdownActive(false), 0);
+        }
         
         return newCountdowns;
       });
     }, 1000);
     
-    return () => clearInterval(intervalId);
-  }, [isCountdownActive]);
+    // Clean up interval when component unmounts or countdown is disabled
+    return () => {
+      console.log('Clearing countdown interval');
+      clearInterval(intervalId);
+    };
+  }, [isCountdownActive, isCountdownPaused]);
   
   // Process triggers with countdown logic
   const handleTriggerWithCountdown = useCallback((inputData: any) => {
+    console.log('Handling trigger with countdown', inputData);
     const sourceId = inputData.source;
     
     // Initialize countdown for this source if needed
     if (countdowns[sourceId] === undefined) {
+      console.log('Initializing countdown for source', sourceId);
+      setCountdowns(prev => ({
+        ...prev,
+        [sourceId]: getInitialCountdown()
+      }));
+      setIsCountdownActive(true);
+    } else if (countdowns[sourceId] === 0) {
+      // If countdown was at 0, reset it to the initial value
+      console.log('Resetting countdown for source', sourceId);
       setCountdowns(prev => ({
         ...prev,
         [sourceId]: getInitialCountdown()
@@ -209,11 +228,34 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     setAccumulatedCount(count => count + 1);
   }, [countdowns, getInitialCountdown]);
   
+  // Check if data has conditions met to execute a response
+  const shouldExecuteResponse = useCallback((inputData: any) => {
+    // For debug purposes
+    console.log('Checking if should execute response:', inputData);
+    
+    // If data comes from a trigger, check if condition is met
+    if (inputData.triggerInfo && !inputData.conditionMet) {
+      console.log('Trigger condition not met, skipping response');
+      return false;
+    }
+    
+    // For debug nodes or devices, we consider any valid non-zero data as actionable
+    if (inputData.value !== undefined && inputData.value !== null && inputData.value !== 0) {
+      console.log('Valid non-zero value, should execute response');
+      return true;
+    }
+    
+    console.log('No valid data for response execution');
+    return false;
+  }, []);
+  
   // Execute the configured response action
   const executeResponse = useCallback((inputData: any) => {
     const actionType = data.properties?.action || "email"; // Default to email
     const recipient = data.properties?.recipient || "admin@example.com";
-    const messageTemplate = data.properties?.message || "Alert triggered from {sensorType} with value {value}";
+    const messageTemplate = data.properties?.message;
+    
+    console.log(`Executing ${actionType} response to ${recipient}`);
     
     // Prepare data values for message template
     let messageWithValues = messageTemplate;
@@ -240,7 +282,6 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     try {
       switch (actionType) {
         case "notification":
-          // Simulate sending a notification
           console.log(`NOTIFICATION to ${recipient}: ${messageWithValues}`);
           
           // In a real implementation, you would call an API or service
@@ -260,15 +301,16 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
           
           // Use our email service to send the email
           const { subject, text, html } = formatAlertEmail(
-            `IoFRA Alert: ${inputData.sensorType || 'Sensor'} Trigger`, 
+            `IoFRA Alert: Device Triggered`, 
             messageWithValues,
             {
               deviceName: inputData.sourceName,
               sensorType: inputData.sensorType,
               value: inputData.value,
-              timestamp: inputData.timestamp
             }
           );
+          
+          console.log('Formatted email data:', { subject, text: text.substring(0, 50) + '...' });
           
           // Send the email (async)
           sendEmail({
@@ -278,6 +320,8 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
             html,
             fromName: "IoFRA Monitoring System"
           }).then(result => {
+            console.log('Email sending result:', result);
+            
             // Update the response entry status based on email send result
             if (result.success) {
               console.log("Email sent successfully");
@@ -314,6 +358,25 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
               // Update action status
               setLastActionStatus('error');
             }
+          }).catch(error => {
+            console.error("Email sending error:", error);
+            
+            // Update the status in response history on catch
+            setResponseHistory(prev => {
+              return prev.map(entry => {
+                if (entry.timestamp === responseEntry.timestamp) {
+                  return { 
+                    ...entry, 
+                    actionSuccess: false,
+                    message: `${entry.message} (Error: ${error.message || 'Unknown error'})`
+                  };
+                }
+                return entry;
+              });
+            });
+            
+            // Update action status
+            setLastActionStatus('error');
           });
           
           // Set initial success state while we wait for the async result
@@ -376,7 +439,9 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     // Find sources with zero countdown and execute their responses
     Object.entries(countdowns).forEach(([sourceId, count]) => {
       if (count === 0 && pendingTriggers[sourceId]) {
-        // Execute response and reset the countdown
+        console.log('Countdown reached zero for source', sourceId, 'executing response');
+        
+        // Execute response
         executeResponse(pendingTriggers[sourceId]);
         
         // Clear pending trigger after executing
@@ -385,9 +450,15 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
           delete newPending[sourceId];
           return newPending;
         });
+        
+        // Reset this countdown to the initial value for future triggers
+        setCountdowns(prev => ({
+          ...prev,
+          [sourceId]: getInitialCountdown()
+        }));
       }
     });
-  }, [countdowns, pendingTriggers, executeResponse]);
+  }, [countdowns, pendingTriggers, executeResponse, getInitialCountdown]);
   
   // Process data from connected nodes
   useEffect(() => {
@@ -604,9 +675,16 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
     const values = Object.values(countdowns);
     if (values.length === 0) return getInitialCountdown();
     
-    // Return the lowest non-zero value, or 0 if any countdown is at 0
-    const lowestCount = Math.min(...values);
-    return lowestCount;
+    // Get all non-zero values, or return 0 if any countdown is at 0
+    const nonZeroValues = values.filter(v => v > 0);
+    
+    // If there are no non-zero values but we have values, it means all are zero
+    if (nonZeroValues.length === 0 && values.length > 0) {
+      return 0;
+    }
+    
+    // Return the lowest non-zero value
+    return nonZeroValues.length > 0 ? Math.min(...nonZeroValues) : getInitialCountdown();
   };
   
   // Handle countdown input change
@@ -653,6 +731,26 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
       setIsEditingCountdown(false);
     }
   };
+  
+  // Toggle countdown pause/play
+  const toggleCountdownPause = useCallback(() => {
+    setIsCountdownPaused(prev => !prev);
+  }, []);
+  
+  // Handle message template change
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageTemplate(e.target.value);
+  }, []);
+  
+  // Save message template
+  const saveMessageTemplate = useCallback(() => {
+    if (data.properties) {
+      data.properties.message = messageTemplate;
+    } else {
+      data.properties = { message: messageTemplate };
+    }
+    setIsEditingMessage(false);
+  }, [data, messageTemplate]);
   
   return (
     <div className={`relative bg-white rounded-lg border border-[#D9E4DD] shadow-sm p-3 ${expanded ? 'w-64' : 'w-48'}`}>
@@ -718,10 +816,20 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
             </div>
           ) : (
             <div className="flex items-center">
-              <span className="flex items-center font-medium">
+              <span className={`flex items-center font-medium ${isCountdownPaused ? "text-orange-400" : ""}`}>
                 <Timer className="h-3 w-3 mr-1" />
                 {formatTime(getLowestCountdown())}
               </span>
+              <button 
+                onClick={toggleCountdownPause}
+                className={`ml-1 ${isCountdownPaused ? "text-orange-400 hover:text-orange-600" : "text-[#7A8CA3] hover:text-[#5C6E91]"}`}
+                title={isCountdownPaused ? "Resume countdown" : "Pause countdown"}
+              >
+                {isCountdownPaused ? 
+                  <Play className="h-3 w-3" /> : 
+                  <Pause className="h-3 w-3" />
+                }
+              </button>
               <button 
                 onClick={() => {
                   setCountdownInput(formatTime(getInitialCountdown()));
@@ -735,6 +843,11 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
             </div>
           )}
         </div>
+        {isCountdownPaused && isCountdownActive && (
+          <div className="text-center text-[9px] text-orange-400 mt-1">
+            Timer paused - no actions will be triggered
+          </div>
+        )}
       </div>
       
       {expanded && (
@@ -820,6 +933,53 @@ export const ResponseNode = memo(({ data, isConnectable, id }: NodeProps) => {
               )}
             </div>
           )}
+          
+          <div className="mt-3 border-t border-[#D9E4DD] pt-2">
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-xs font-medium text-[#5C6E91]">Message Template</h4>
+              {!isEditingMessage && (
+                <button 
+                  onClick={() => setIsEditingMessage(true)}
+                  className="text-xs text-[#7A8CA3] hover:text-[#5C6E91] flex items-center"
+                  title="Edit message template"
+                >
+                  <Edit2 className="h-3 w-3" />
+                  <span className="ml-1">Edit</span>
+                </button>
+              )}
+            </div>
+            
+            {isEditingMessage ? (
+              <div className="space-y-2">
+                <textarea
+                  value={messageTemplate}
+                  onChange={handleMessageChange}
+                  className="w-full min-h-[60px] text-xs font-mono p-1 border border-[#D9E4DD] rounded bg-white"
+                />
+                <div className="flex justify-end space-x-2">
+                  <button 
+                    onClick={() => {
+                      setMessageTemplate(data.properties?.message);
+                      setIsEditingMessage(false);
+                    }}
+                    className="text-xs text-[#7A8CA3] hover:text-[#5C6E91]"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={saveMessageTemplate}
+                    className="text-xs text-green-600 hover:text-green-800"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#F8F6F0] p-1.5 rounded text-[10px] text-[#5C6E91] break-words">
+                {messageTemplate}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

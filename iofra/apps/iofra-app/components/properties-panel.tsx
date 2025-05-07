@@ -393,11 +393,7 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
                     <SelectValue placeholder="Select action" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="notification">Notification</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="webhook">Webhook</SelectItem>
-                    <SelectItem value="mqtt">MQTT Publish</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -433,33 +429,6 @@ export function PropertiesPanel({ selectedNode, updateNodeProperties, nodes }: P
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message">Message Template</Label>
-                <Textarea
-                  id="message"
-                  value={properties.message || "Alert triggered from {sensorType} with value {value}"}
-                  onChange={(e) => handlePropertyChange("message", e.target.value)}
-                  className="min-h-[80px] font-mono text-xs"
-                  placeholder="Alert triggered from {sensorType} with value {value}"
-                />
-                <p className="text-xs text-[#7A8CA3]">
-                  You can use {"{value}"} and {"{sensorType}"} as placeholders
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="countdownStart">Countdown Time (seconds)</Label>
-                <Input
-                  id="countdownStart"
-                  type="number"
-                  min="1"
-                  value={properties.countdownStart || 5}
-                  onChange={(e) => handlePropertyChange("countdownStart", Number.parseInt(e.target.value))}
-                />
-                <p className="text-xs text-[#7A8CA3]">
-                  Time to wait before sending the alert
-                </p>
-              </div>
             </div>
           </>
         )
